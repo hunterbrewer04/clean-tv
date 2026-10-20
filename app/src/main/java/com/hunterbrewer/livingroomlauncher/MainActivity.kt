@@ -95,12 +95,6 @@ class MainActivity : Activity(), LauncherView.Actions {
         startSafely(intent, input.label)
     }
 
-    override fun openJellyfin() {
-        val intent = packageManager.getLeanbackLaunchIntentForPackage("org.jellyfin.androidtv")
-            ?: packageManager.getLaunchIntentForPackage("org.jellyfin.androidtv")
-        if (intent != null) startSafely(intent, "Jellyfin")
-    }
-
     private fun startSafely(intent: Intent, label: String) {
         try {
             startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))

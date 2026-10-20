@@ -3,7 +3,6 @@ package com.hunterbrewer.livingroomlauncher
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.*
-import android.graphics.drawable.Drawable
 import android.os.Build
 import android.view.KeyEvent
 import android.view.View
@@ -23,7 +22,6 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
         fun openWifi()
         fun openSettings()
         fun switchInput(input: TvInput)
-        fun openJellyfin()
     }
 
     data class TvInput(val label: String, val detail: String, val id: String)
@@ -37,7 +35,6 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
     private var editMode = false
     private var centerHeld = false
     private var longPressTriggered = false
-    private var selectedHeroPackage: String? = null
     private val bitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val shadowPaint = Paint(Paint.FILTER_BITMAP_FLAG).apply { color = Color.BLACK }
     private val shadow: Bitmap = CardArt.shadow()
@@ -85,7 +82,6 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
         apps.addAll(entries)
         val nextIndex = focusedPackage?.let { pkg -> apps.indexOfFirst { it.packageName == pkg }.takeIf { it >= 0 } } ?: nav.index
         nav = NavigationState.grid(nextIndex.coerceIn(0, max(0, apps.lastIndex)), COLUMNS, apps.size)
-        if (selectedHeroPackage == null) selectedHeroPackage = apps.firstOrNull()?.packageName
         invalidate()
     }
 
@@ -102,9 +98,8 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
         canvas.save()
         canvas.scale(sx, sy)
         drawWallpaper(canvas)
-        drawHero(canvas)
-        drawHeader(canvas)
         drawGrid(canvas)
+        drawHeader(canvas)
         if (nav.zone == Zone.INPUTS) drawInputMenu(canvas)
         if (editMode) drawEditHint(canvas)
         canvas.restore()
@@ -191,53 +186,21 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
         paint.style = Paint.Style.FILL
     }
 
-    private fun drawHero(c: Canvas) {
-        if (nav.zone == Zone.GRID && nav.index / COLUMNS > 0) return
-        val app = apps.firstOrNull { it.packageName == selectedHeroPackage } ?: apps.firstOrNull() ?: return
-        paint.shader = RadialGradient(1460f, 380f, 920f, withAlpha(lighten(app.accent), 190), Color.TRANSPARENT, Shader.TileMode.CLAMP)
-        c.drawRect(0f, 210f, DESIGN_W, 650f, paint); paint.shader = null
-        if (app.packageName == "org.jellyfin.androidtv") drawJellyfinShelf(c, app) else drawAppHero(c, app)
-    }
-
-    private fun drawAppHero(c: Canvas, app: AppEntry) {
-        // Big branded card on the left, title on the right, like an Apple TV top shelf.
-        val x = 112f; val y = 268f; val w = 534f; val h = 321f
-        dst.set(x - 52f, y - 40f, x + w + 52f, y + h + 64f)
-        c.drawBitmap(shadow, null, dst, shadowPaint)
-        dst.set(x, y, x + w, y + h)
-        c.drawBitmap(app.card, null, dst, bitmapPaint)
-        label(c, app.label, 700f, 420f, 72f, Color.WHITE, medium)
-        label(c, "PRESS OK TO OPEN", 704f, 478f, 24f, Color.argb(170, 255, 255, 255), medium, 4f)
-    }
-
-    private fun drawJellyfinShelf(c: Canvas, app: AppEntry) {
-        label(c, "Continue Watching", 112f, 292f, 34f, Color.WHITE, medium)
-        val names = arrayOf("Open Jellyfin", "Movies", "Shows", "Live TV")
-        val shades = intArrayOf(Color.rgb(40, 123, 163), Color.rgb(113, 69, 155), Color.rgb(28, 95, 112), Color.rgb(46, 84, 143))
-        for (i in names.indices) {
-            val x = 112f + i * 425f
-            rect.set(x, 320f, x + 385f, 510f)
-            paint.shader = LinearGradient(x, 320f, x + 385f, 510f, shades[i], Color.rgb(18, 25, 42), Shader.TileMode.CLAMP)
-            c.drawRoundRect(rect, 18f, 18f, paint); paint.shader = null
-            if (i == 0) drawDrawable(c, app.icon, x + 135f, 347f, 110f, 110f)
-            label(c, names[i], x + 22f, 492f, 27f, Color.WHITE, medium)
-        }
-        label(c, "Jellyfin account data stays inside the Jellyfin app", 112f, 552f, 22f, Color.argb(145, 255, 255, 255), regular)
-    }
-
     private fun drawGrid(c: Canvas) {
         if (apps.isEmpty()) {
-            label(c, "No TV apps found", 112f, 720f, 32f, Color.WHITE, medium)
+            label(c, "No TV apps found", 112f, GRID_TOP + 60f, 32f, Color.WHITE, medium)
             return
         }
+        // Grid sits directly under the header; scroll only once focus passes the last visible row.
         val focusedRow = if (nav.zone == Zone.GRID) nav.index / COLUMNS else 0
-        val baseY = if (focusedRow == 0) 665f else 275f - max(0, focusedRow - 1) * ROW_STEP
+        val firstVisibleRow = max(0, focusedRow - (VISIBLE_ROWS - 1))
+        val baseY = GRID_TOP - firstVisibleRow * ROW_STEP
         apps.forEachIndexed { index, app ->
             val row = index / COLUMNS
             val col = index % COLUMNS
             val x = 90f + col * 357f
             val y = baseY + row * ROW_STEP
-            if (y < 205f || y > DESIGN_H + 100f) return@forEachIndexed
+            if (y < GRID_TOP - 20f || y > DESIGN_H) return@forEachIndexed
             drawAppCard(c, app, x, y, nav.zone == Zone.GRID && nav.index == index)
         }
     }
@@ -346,11 +309,9 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
             if (target.zone == Zone.GRID && target.index != nav.index) {
                 val moved = AppOrder.move(apps, nav.index, target.index)
                 apps.clear(); apps.addAll(moved); nav = target
-                selectedHeroPackage = apps.getOrNull(nav.index)?.packageName
             }
         } else {
             nav = nav.move(direction)
-            if (nav.zone == Zone.GRID) selectedHeroPackage = apps.getOrNull(nav.index)?.packageName
         }
         invalidate(); return true
     }
@@ -368,13 +329,6 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
         invalidate()
     }
 
-    private fun drawDrawable(c: Canvas, drawable: Drawable, x: Float, y: Float, w: Float, h: Float) {
-        val old = drawable.bounds
-        drawable.setBounds(x.toInt(), y.toInt(), (x + w).toInt(), (y + h).toInt())
-        drawable.draw(c)
-        drawable.bounds = old
-    }
-
     private fun label(c: Canvas, value: String, x: Float, baseline: Float, size: Float, color: Int, face: Typeface, spacing: Float = 0f, align: Paint.Align = Paint.Align.LEFT) {
         text.textSize = size; text.color = color; text.typeface = face; text.textAlign = align; text.letterSpacing = if (size > 0) spacing / size else 0f
         c.drawText(value, x, baseline, text)
@@ -382,7 +336,6 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
 
     private fun withAlpha(color: Int, alpha: Int) = (color and 0x00FFFFFF) or (alpha.coerceIn(0, 255) shl 24)
 
-    private fun lighten(color: Int): Int = Color.rgb((Color.red(color) + 70).coerceAtMost(255), (Color.green(color) + 70).coerceAtMost(255), (Color.blue(color) + 70).coerceAtMost(255))
 
     companion object {
         private const val DESIGN_W = 1920f
@@ -392,5 +345,7 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
         private const val CARD_H = 187f
         private const val ROW_STEP = 270f
         private const val FOCUS_MS = 170L
+        private const val GRID_TOP = 300f
+        private const val VISIBLE_ROWS = 3
     }
 }

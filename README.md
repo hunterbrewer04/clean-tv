@@ -5,13 +5,12 @@ A private, lightweight Android TV launcher built specifically for Hunter's Hisen
 ## Current install candidate: v0.1.0
 
 - Native Kotlin + one custom Android `View`; no Compose, analytics, trackers, or third-party runtime libraries.
-- Dynamic greeting, clock, date, and Apple TV-inspired Top Shelf layout.
+- Dynamic greeting, clock, and date header with the app grid directly underneath (no featured/Top Shelf section).
 - Five-column app grid populated from installed Leanback apps.
 - Focus lift, D-pad navigation, and hold-OK app rearranging with persistent order.
 - Header buttons for Inputs, Wi-Fi, and Settings.
 - Exact input routes for HDMI 1-4, composite AV, and the antenna tuner on this TV.
 - Play Store appears as **Get Apps** and newly installed apps appear automatically.
-- Jellyfin is first and gets a dedicated shelf. v0.1 deliberately does not extract credentials or viewing history from Jellyfin's private app data; selecting Jellyfin opens the existing signed-in app.
 - Included clock DreamService, used before Google DreamX is disabled.
 - Reversible, guarded operations scripts. Installation is separate from Home activation and debloating.
 
