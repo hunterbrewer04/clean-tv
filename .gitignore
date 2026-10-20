@@ -13,3 +13,4 @@ secrets.properties
 dist/
 # Captured device state is local operational data
 snapshots/
+state/
