@@ -1,0 +1,237 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Living Room Launcher: mockup</title>
+<style>
+  .wrap{width:min(100%,1280px)}
+  .bar{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center}
+  .tab{padding:6px 14px;border:1px solid var(--border,#444);border-radius:999px;background:transparent;color:var(--foreground,#eee);cursor:pointer;font:inherit;font-size:13px}
+  .tab.on{background:var(--accent,#3b82f6);border-color:transparent;color:#fff}
+  .hint{font-size:12px;color:var(--muted-foreground,#999)}
+  .viewport{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;border-radius:12px;background:#000;box-shadow:0 0 0 1px var(--border,#333);outline:none;cursor:default}
+  .viewport:focus{box-shadow:0 0 0 2px var(--accent,#3b82f6)}
+  .remote{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;align-items:center}
+  .remote button{min-width:38px;height:32px;padding:0 10px;border:1px solid var(--border,#444);border-radius:8px;background:var(--card,#1b1b1b);color:var(--foreground,#eee);cursor:pointer;font:inherit;font-size:13px}
+  .remote button:hover{border-color:var(--accent,#3b82f6)}
+
+  /* ---------- the TV (1920x1080, scaled to fit) ---------- */
+  .stage{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;overflow:hidden;color:#fff;
+    font-family:-apple-system,"SF Pro Display",BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  .wall{position:absolute;inset:-20px;filter:blur(3px)}
+  .wall svg{width:100%;height:100%;display:block}
+  .scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.45))}
+
+  .clock{position:absolute;top:52px;right:96px;font-size:34px;font-weight:500;letter-spacing:.3px;text-shadow:0 2px 10px rgba(0,0,0,.5);z-index:20;transition:opacity .3s}
+  .bigclock{position:absolute;left:96px;top:96px;z-index:20}
+  .bigclock .t1{font-size:132px;font-weight:200;letter-spacing:-3px;line-height:1}
+  .bigclock .t2{font-size:34px;font-weight:500;opacity:.85;margin-top:10px}
+
+  /* top shelf */
+  .shelf{position:absolute;left:0;top:0;width:1920px;height:640px;transition:transform .5s cubic-bezier(.2,.8,.2,1),opacity .4s;z-index:1}
+  .hero{position:absolute;inset:0;opacity:0;transition:opacity .45s;-webkit-mask-image:linear-gradient(180deg,#000 72%,transparent 100%);mask-image:linear-gradient(180deg,#000 72%,transparent 100%)}
+  .hero.on{opacity:1}
+  .hero .fade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 45%,rgba(0,0,0,.55) 82%,rgba(0,0,0,.0) 100%)}
+  .hero .mask{position:absolute;left:0;right:0;bottom:-2px;height:160px;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(8,14,26,.0))}
+  .hero .bigwm{position:absolute;left:150px;top:190px;transform:scale(2.6);transform-origin:0 0}
+  .hero .sub{position:absolute;left:152px;top:470px;font-size:28px;font-weight:500;opacity:.85}
+  .hero .tag{position:absolute;right:96px;bottom:70px;font-size:20px;opacity:.6}
+  .cw-title{position:absolute;left:150px;top:120px;font-size:42px;font-weight:600}
+  .cw{position:absolute;left:150px;top:200px;display:flex;gap:40px}
+  .cw .c{width:390px}
+  .cw .art{height:219px;border-radius:14px;position:relative;overflow:hidden;box-shadow:0 18px 40px rgba(0,0,0,.45)}
+  .cw .art b{position:absolute;left:22px;bottom:30px;font-size:30px;font-weight:700;text-shadow:0 2px 8px rgba(0,0,0,.6)}
+  .cw .pb{position:absolute;left:22px;right:22px;bottom:14px;height:6px;border-radius:3px;background:rgba(255,255,255,.3)}
+  .cw .pb i{display:block;height:100%;border-radius:3px;background:#fff}
+  .cw .meta{margin-top:14px;font-size:24px;opacity:.85}
+
+  /* tiles */
+  .grid{position:absolute;inset:0;z-index:5}
+  .t{position:absolute;transition:left .3s cubic-bezier(.2,.8,.2,1),top .5s cubic-bezier(.2,.8,.2,1)}
+  .t.focus{z-index:10}
+  .card{position:absolute;inset:0;border-radius:20px;display:flex;align-items:center;justify-content:center;overflow:hidden;
+    transition:transform .22s cubic-bezier(.2,.8,.2,1),box-shadow .22s;box-shadow:0 10px 24px rgba(0,0,0,.35);cursor:pointer}
+  .card::after{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at var(--mx,28%) var(--my,0%),rgba(255,255,255,.38),rgba(255,255,255,0) 55%);opacity:0;transition:opacity .2s}
+  .t.focus .card{transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) scale(1.15) translateY(-4px);box-shadow:0 36px 64px rgba(0,0,0,.6)}
+  .t.focus .card::after{opacity:1}
+  .wm{transform:scale(var(--wm,1));display:flex;align-items:center;justify-content:center;white-space:nowrap}
+  .lab{position:absolute;left:-60px;right:-60px;text-align:center;top:calc(100% + 30px);font-size:26px;font-weight:500;opacity:0;transition:opacity .2s;text-shadow:0 2px 10px rgba(0,0,0,.7);pointer-events:none}
+  .t.focus .lab{opacity:1}
+
+  /* rearrange (hold OK) */
+  .stage.editing .t .card{animation:wig .24s ease-in-out infinite alternate}
+  .stage.editing .t.focus .card{animation:none;transform:scale(1.24) translateY(-12px);box-shadow:0 44px 80px rgba(0,0,0,.7)}
+  @keyframes wig{from{transform:rotate(-1.4deg)}to{transform:rotate(1.4deg)}}
+  .pill{position:absolute;top:44px;left:50%;transform:translateX(-50%);padding:12px 28px;border-radius:999px;background:rgba(30,30,34,.75);font-size:24px;font-weight:500;z-index:30;opacity:0;transition:opacity .25s}
+  .stage.editing .pill{opacity:1}
+
+  /* launch overlay */
+  .launch{position:absolute;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:40px;opacity:0;pointer-events:none;transform:scale(.6);transition:opacity .25s,transform .35s cubic-bezier(.2,.8,.2,1)}
+  .launch.show{opacity:1;transform:scale(1)}
+  .launch .lw{transform:scale(2.4);margin-bottom:60px}
+  .launch code{font:26px ui-monospace,Menlo,monospace;background:rgba(0,0,0,.45);padding:12px 22px;border-radius:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar">
+    <button class="tab on" data-v="A">A · Top Shelf (Apple TV)</button>
+    <button class="tab" data-v="B">B · Clean Grid</button>
+    <span class="hint">Click the TV, then: arrows = D-pad · Enter = open · hold Enter / E = rearrange · H = Home</span>
+  </div>
+  <div class="viewport" id="vp" tabindex="0"><div class="stage" id="st"></div></div>
+  <div class="remote">
+    <button data-k="ArrowLeft">◀</button><button data-k="ArrowUp">▲</button><button data-k="ArrowDown">▼</button><button data-k="ArrowRight">▶</button>
+    <button data-k="Enter">OK</button><button data-k="e">Hold OK</button><button data-k="h">Home</button><button data-k="Escape">Back</button>
+  </div>
+</div>
+<script>
+const dots = ['#FCB711','#F37021','#CC004C','#6460AA','#0089D0','#0DB14B'].map(c=>`<i style="width:10px;height:10px;border-radius:50%;background:${c};display:inline-block"></i>`).join('');
+const gear = (() => { let g=''; for(let i=0;i<8;i++) g+=`<rect x="56" y="10" width="16" height="26" rx="4" transform="rotate(${i*45} 64 64)"/>`;
+  return `<svg width="96" height="96" viewBox="0 0 128 128"><g fill="#fff">${g}<circle cx="64" cy="64" r="38"/></g><circle cx="64" cy="64" r="15" fill="#6c7078"/></svg>`; })();
+const A = [
+ {n:'Jellyfin',p:'org.jellyfin.androidtv',bg:'linear-gradient(135deg,#AA5CC3,#00A4DC)',w:'<span style="font-weight:700;font-size:46px;letter-spacing:-1px">jellyfin</span>',
+   hero:'linear-gradient(120deg,#2a1240 0%,#14203f 55%,#06253f 100%)'},
+ {n:'Netflix',p:'com.netflix.ninja',bg:'#000',w:'<span style="color:#E50914;font-weight:900;font-size:50px;letter-spacing:1px;transform:scaleY(1.3);display:inline-block;font-family:Impact,\'Arial Narrow\',sans-serif">NETFLIX</span>',
+   hero:'radial-gradient(ellipse at 75% 40%,#5a0a0f 0%,#1a0204 55%,#000 100%)', sub:'Pick up where you left off'},
+ {n:'Disney+',p:'com.disney.disneyplus',bg:'radial-gradient(circle at 50% 130%,#1f80e0 0,#0e3a8c 45%,#06123a 100%)',w:'<span style="font-family:Georgia,serif;font-style:italic;font-size:54px;font-weight:700">Disney<sup style="font-size:34px;font-style:normal">+</sup></span>',
+   hero:'radial-gradient(ellipse at 70% 120%,#1f80e0 0,#0e3a8c 40%,#040b26 100%)', sub:'Disney, Pixar, Marvel, Star Wars'},
+ {n:'Prime Video',p:'com.amazon.amazonvideo.livingroom',bg:'#0F171E',w:'<div style="text-align:center;line-height:1"><div style="font-size:36px;font-weight:700;letter-spacing:-.5px">prime video</div><svg width="130" height="18" viewBox="0 0 130 18"><path d="M6 4 Q64 24 118 4" stroke="#1399FF" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M108 1 L120 4 L113 13" stroke="#1399FF" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>',
+   hero:'radial-gradient(ellipse at 75% 30%,#123a5c 0%,#0F171E 60%,#06090c 100%)', sub:'Included with Prime'},
+ {n:'Tubi',p:'com.tubitv',bg:'#7408FF',w:'<span style="color:#FFFF13;font-weight:900;font-size:62px;letter-spacing:-2px">tubi</span>',
+   hero:'radial-gradient(ellipse at 75% 40%,#7408FF 0%,#3a0482 50%,#14002e 100%)', sub:'Free movies & TV'},
+ {n:'Fubo',p:'com.fubo.firetv.screen',bg:'#FA4616',w:'<span style="font-weight:900;font-size:60px;letter-spacing:-2px">fubo</span>'},
+ {n:'Hulu',p:'com.hulu.livingroomplus',bg:'#1CE783',w:'<span style="color:#040405;font-weight:800;font-size:60px;letter-spacing:-2px">hulu</span>'},
+ {n:'Max',p:'com.wbd.stream',bg:'linear-gradient(135deg,#002BE7,#0a1a8a)',w:'<span style="font-weight:800;font-size:62px;letter-spacing:-2px">max</span>'},
+ {n:'Peacock',p:'com.peacocktv.peacockandroid',bg:'#000',w:`<span style="font-weight:800;font-size:44px;letter-spacing:-1px">peacock</span><span style="display:inline-flex;gap:3px;margin-left:8px">${dots}</span>`},
+ {n:'YouTube',p:'com.google.android.youtube.tv',bg:'#fff',w:'<svg width="120" height="84" viewBox="0 0 120 84"><rect width="120" height="84" rx="22" fill="#FF0000"/><path d="M48 24 L82 42 L48 60 Z" fill="#fff"/></svg>'},
+ {n:'Paramount+',p:'com.cbs.ott',bg:'linear-gradient(180deg,#0064FF,#0033a0)',w:'<span style="font-weight:700;font-size:40px;letter-spacing:-.5px">Paramount<span style="color:#9fdcff">+</span></span>'},
+ {n:'ESPN',p:'com.espn.score_center',bg:'#C8102E',w:'<span style="font-weight:900;font-style:italic;font-size:64px;letter-spacing:-2px">ESPN</span>'},
+ {n:'FOX Sports',p:'com.foxsports.android',bg:'linear-gradient(180deg,#13305a,#0B1F3A)',w:'<span style="font-weight:900;font-style:italic;font-size:42px;letter-spacing:-1px">FOX <span style="font-weight:600">SPORTS</span></span>'},
+ {n:'March Madness',p:'com.ncaa.mmlive.app',bg:'linear-gradient(135deg,#00539f,#002a5c)',w:'<div style="text-align:center;line-height:1.05"><div style="font-size:48px;font-weight:900;letter-spacing:1px">NCAA</div><div style="font-size:22px;font-weight:600;opacity:.9">MARCH MADNESS LIVE</div></div>'},
+ {n:'Apple TV',p:'com.apple.atve.androidtv.appletv',bg:'#000',w:'<span style="font-size:52px;font-weight:600;letter-spacing:-1px">Apple TV</span>'},
+ {n:'Plex',p:'com.plexapp.android',bg:'#1F1F1F',w:'<span style="font-weight:800;font-size:60px;letter-spacing:-1px">ple<span style="color:#EBAF00">x</span></span>'},
+ {n:'Spotify',p:'com.spotify.tv.android',bg:'#121212',w:'<svg width="92" height="92" viewBox="0 0 92 92"><circle cx="46" cy="46" r="46" fill="#1ED760"/><g fill="none" stroke="#121212" stroke-linecap="round"><path d="M22 34 Q48 25 72 38" stroke-width="7"/><path d="M25 48 Q47 41 67 51" stroke-width="6"/><path d="M28 61 Q46 56 62 63" stroke-width="5"/></g></svg>'},
+ {n:'Tailscale',p:'com.tailscale.ipn',bg:'#242424',w:(()=>{let s='<svg width="84" height="84" viewBox="0 0 84 84">';[[0,0,.3],[1,0,.3],[2,0,.3],[0,1,1],[1,1,1],[2,1,1],[0,2,.3],[1,2,1],[2,2,.3]].forEach(([x,y,o])=>s+=`<circle cx="${14+x*28}" cy="${14+y*28}" r="11" fill="#fff" opacity="${o}"/>`);return s+'</svg>'})()},
+ {n:'Inputs',p:'HDMI 1 / HDMI 2 / HDMI 3',bg:'linear-gradient(180deg,#5b5f66,#393c41)',w:'<div style="text-align:center"><svg width="110" height="50" viewBox="0 0 110 50"><path d="M6 6 H104 V30 L92 44 H18 L6 30 Z" fill="none" stroke="#fff" stroke-width="6" stroke-linejoin="round"/><rect x="26" y="18" width="58" height="8" rx="2" fill="#fff"/></svg><div style="font-size:24px;font-weight:600;margin-top:6px">HDMI</div></div>'},
+ {n:'Get Apps',p:'com.android.vending',bg:'linear-gradient(180deg,#22a4ff,#0a5cff)',w:'<svg width="96" height="96" viewBox="0 0 96 96"><path d="M20 34 H76 L71 82 H25 Z" fill="#fff"/><path d="M34 40 V28 A14 14 0 0 1 62 28 V40" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/><path d="M48 50 V72 M38 62 L48 72 L58 62" stroke="#0a5cff" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>'},
+ {n:'Settings',p:'com.android.tv.settings',bg:'linear-gradient(180deg,#8e9299,#5d6168)',w:gear},
+];
+
+const W = {
+ A:{cols:5,w:312,h:187,gx:45,gy:84,x0:90,wm:1},
+ B:{cols:7,w:220,h:132,gx:33,gy:78,x0:90,wm:.72},
+};
+const S = {v:'A', f:0, edit:false};
+let order = A.map((_,i)=>i), tiles = [], heroes = [];
+const st = document.getElementById('st'), vp = document.getElementById('vp');
+
+function wallpaper(){
+  return `<div class="wall"><svg viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+  <defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b1730"/><stop offset=".55" stop-color="#1d3a5f"/><stop offset=".8" stop-color="#e08a5a"/><stop offset="1" stop-color="#f2b07a"/></linearGradient>
+  <radialGradient id="sun" cx=".7" cy=".72" r=".35"><stop offset="0" stop-color="#ffd9a0" stop-opacity=".9"/><stop offset="1" stop-color="#ffd9a0" stop-opacity="0"/></radialGradient></defs>
+  <rect width="1920" height="1080" fill="url(#sky)"/><rect width="1920" height="1080" fill="url(#sun)"/>
+  <path d="M0 760 L220 610 L380 700 L560 540 L760 690 L920 600 L1120 720 L1340 560 L1560 690 L1760 600 L1920 660 V1080 H0Z" fill="#2a3550" opacity=".85"/>
+  <path d="M0 860 L260 740 L470 830 L700 720 L930 840 L1180 740 L1420 850 L1660 760 L1920 820 V1080 H0Z" fill="#172238"/>
+  <path d="M0 960 L300 880 L620 950 L940 870 L1260 960 L1600 890 L1920 940 V1080 H0Z" fill="#0b1222"/></svg></div><div class="scrim"></div>`;
+}
+
+function heroHTML(a){
+  if(a.n==='Jellyfin'){
+    const cw=[['Severance','S2 · E5',62,'linear-gradient(135deg,#0f3b4f,#4aa3b8)'],['Dune: Part Two','1h 12m left',41,'linear-gradient(135deg,#7a4a1c,#e3a35b)'],['The Bear','S3 · E2',78,'linear-gradient(135deg,#3a1f12,#b05a2a)'],['Planet Earth III','E3 · Ocean',23,'linear-gradient(135deg,#0d3d2a,#3fae7a)']];
+    return `<div class="hero" style="background:${a.hero}"><div class="fade"></div>
+      <div class="cw-title">Continue Watching</div>
+      <div class="cw">${cw.map(([t,m,p,g])=>`<div class="c"><div class="art" style="background:${g}"><b>${t}</b><div class="pb"><i style="width:${p}%"></i></div></div><div class="meta">${m}</div></div>`).join('')}</div>
+      <div class="tag">example titles: would come live from your Jellyfin server</div></div>`;
+  }
+  return `<div class="hero" style="background:${a.hero||a.bg}"><div class="fade"></div><div class="bigwm"><div class="wm">${a.w}</div></div><div class="sub">${a.sub||''}</div></div>`;
+}
+
+function render(){
+  const L = W[S.v];
+  st.className = 'stage' + (S.edit?' editing':'');
+  st.innerHTML = wallpaper()
+    + (S.v==='A' ? `<div class="shelf" id="shelf">${A.map(heroHTML).join('')}</div><div class="clock" id="clk"></div>`
+                 : `<div class="bigclock"><div class="t1" id="clk"></div><div class="t2" id="dt"></div></div>`)
+    + `<div class="grid" id="grid"></div><div class="pill">Rearranging: arrows move · OK to drop</div><div class="launch" id="launch"></div>`;
+  heroes = [...st.querySelectorAll('.hero')];
+  const grid = st.querySelector('#grid');
+  tiles = A.map((a,i)=>{
+    const t = document.createElement('div'); t.className='t';
+    t.style.width=L.w+'px'; t.style.height=L.h+'px';
+    t.innerHTML = `<div class="card" style="background:${a.bg}"><div class="wm" style="--wm:${L.wm}">${a.w}</div></div><div class="lab">${a.n}</div>`;
+    const card = t.firstChild;
+    card.addEventListener('click',()=>{ const pos=order.indexOf(i); if(pos===S.f && !S.edit) launch(); else {S.f=pos; update();} vp.focus(); });
+    card.addEventListener('mousemove',e=>{ if(order.indexOf(i)!==S.f) return; const r=card.getBoundingClientRect(); const x=(e.clientX-r.left)/r.width, y=(e.clientY-r.top)/r.height;
+      card.style.setProperty('--ry',((x-.5)*10)+'deg'); card.style.setProperty('--rx',((.5-y)*10)+'deg'); card.style.setProperty('--mx',(x*100)+'%'); card.style.setProperty('--my',(y*100)+'%'); });
+    card.addEventListener('mouseleave',()=>{['--rx','--ry','--mx','--my'].forEach(p=>card.style.removeProperty(p));});
+    grid.appendChild(t); return t;
+  });
+  tick(); update();
+}
+
+function update(){
+  const L = W[S.v], fr = Math.floor(S.f/L.cols), rh = L.h+L.gy;
+  let base;
+  if(S.v==='A'){
+    base = fr===0 ? 664 : 130 - Math.max(0,fr-2)*rh;
+    const shelf = st.querySelector('#shelf');
+    shelf.style.transform = fr===0 ? 'none' : 'translateY(-660px)';
+    shelf.style.opacity = fr===0 ? 1 : 0;
+    if(fr===0) heroes.forEach((h,i)=>h.classList.toggle('on', i===order[S.f]));
+  } else base = 372;
+  order.forEach((ai,pos)=>{
+    const t=tiles[ai], r=Math.floor(pos/L.cols), c=pos%L.cols;
+    t.style.left = (L.x0 + c*(L.w+L.gx))+'px';
+    t.style.top = (base + r*rh)+'px';
+    t.classList.toggle('focus', pos===S.f);
+  });
+}
+
+function move(dx,dy){
+  const L=W[S.v], n=order.length; let r=Math.floor(S.f/L.cols), c=S.f%L.cols;
+  let t = S.f;
+  if(dx){ const nc=c+dx; if(nc>=0 && nc<L.cols && S.f+dx<n) t=S.f+dx; }
+  if(dy){ const nt=S.f+dy*L.cols; if(nt>=0) t = Math.min(nt, n-1); if(nt<0) t=S.f; if(dy>0 && Math.floor((n-1)/L.cols)===r) t=S.f; }
+  if(t===S.f) return;
+  if(S.edit){ [order[S.f],order[t]]=[order[t],order[S.f]]; }
+  S.f=t; update();
+}
+
+let lt;
+function launch(){
+  const a=A[order[S.f]], el=st.querySelector('#launch');
+  el.style.background=a.bg;
+  el.innerHTML=`<div class="lw"><div class="wm">${a.w}</div></div><code>${a.p.includes('.')?'startActivity → '+a.p:'switch input → '+a.p}</code>`;
+  el.classList.add('show'); clearTimeout(lt); lt=setTimeout(()=>el.classList.remove('show'),1500);
+}
+
+function key(k, repeat){
+  if(k==='ArrowLeft') move(-1,0); else if(k==='ArrowRight') move(1,0);
+  else if(k==='ArrowUp') move(0,-1); else if(k==='ArrowDown') move(0,1);
+  else if(k==='Enter'){ if(repeat){ if(!S.edit){S.edit=true; st.classList.add('editing');} } else if(S.edit){S.edit=false; st.classList.remove('editing');} else launch(); }
+  else if(k==='e'||k==='E'){ S.edit=!S.edit; st.classList.toggle('editing',S.edit); }
+  else if(k==='Escape'){ if(S.edit){S.edit=false; st.classList.remove('editing');} else {S.f=0; update();} }
+  else if(k==='h'||k==='H'){ S.edit=false; st.classList.remove('editing'); S.f=0; update(); }
+  else return false;
+  return true;
+}
+vp.addEventListener('keydown',e=>{ if(key(e.key,e.repeat)) e.preventDefault(); });
+document.querySelectorAll('.remote button').forEach(b=>b.addEventListener('click',()=>{ key(b.dataset.k,false); vp.focus(); }));
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b)); S.v=b.dataset.v; S.f=0; S.edit=false; render(); vp.focus(); }));
+
+function tick(){
+  const d=new Date(), h=d.getHours()%12||12, m=String(d.getMinutes()).padStart(2,'0');
+  const c=st.querySelector('#clk'); if(c) c.textContent=`${h}:${m}`;
+  const dt=st.querySelector('#dt'); if(dt) dt.textContent=d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
+}
+setInterval(tick,10000);
+new ResizeObserver(()=>{ st.style.transform=`scale(${vp.clientWidth/1920})`; }).observe(vp);
+const q=new URLSearchParams(location.hash.slice(1));
+if(q.get('v')){ S.v=q.get('v'); document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x.dataset.v===S.v)); }
+render();
+if(q.get('f')){ S.f=+q.get('f'); if(q.get('edit')) S.edit=true; st.classList.toggle('editing',S.edit); update(); }
+</script>
+</body>
+</html>
