@@ -72,6 +72,25 @@ object TimeLabels {
     }
 }
 
+/** Pure ARGB math (no android.graphics) so it runs in JVM unit tests. */
+object ColorMath {
+    const val FALLBACK: Int = 0xFF282F3E.toInt()
+
+    /** Average the opaque pixels of an icon, then darken so white labels and the shine stay readable. */
+    fun cardBackground(pixels: IntArray): Int {
+        var r = 0L; var g = 0L; var b = 0L; var n = 0L
+        for (p in pixels) {
+            if ((p ushr 24) and 0xFF < 128) continue
+            r += (p shr 16) and 0xFF; g += (p shr 8) and 0xFF; b += p and 0xFF; n++
+        }
+        if (n == 0L) return FALLBACK
+        var ar = (r / n).toInt(); var ag = (g / n).toInt(); var ab = (b / n).toInt()
+        val peak = maxOf(ar, ag, ab)
+        if (peak > 150) { ar = ar * 150 / peak; ag = ag * 150 / peak; ab = ab * 150 / peak }
+        return (0xFF shl 24) or (ar shl 16) or (ag shl 8) or ab
+    }
+}
+
 object TvInputs {
     fun passthroughUri(inputId: String): String =
         "content://android.media.tv/passthrough/" + URLEncoder.encode(inputId, "UTF-8").replace("+", "%20")

@@ -58,6 +58,22 @@ class LauncherModelTest {
         assertEquals("GOOD EVENING", TimeLabels.greeting(17))
     }
 
+    @Test fun cardColorIgnoresTransparentPixels() {
+        val color = ColorMath.cardBackground(intArrayOf(0x00FFFFFF, 0xFFC80000.toInt()))
+        val r = (color shr 16) and 0xFF; val g = (color shr 8) and 0xFF; val b = color and 0xFF
+        assertEquals(0xFF, (color ushr 24) and 0xFF)
+        assertTrue(r > 0 && g == 0 && b == 0)
+    }
+
+    @Test fun cardColorFallsBackWhenIconIsFullyTransparent() {
+        assertEquals(ColorMath.FALLBACK, ColorMath.cardBackground(intArrayOf(0, 0x10FFFFFF)))
+    }
+
+    @Test fun cardColorIsDarkEnoughForWhiteText() {
+        val color = ColorMath.cardBackground(intArrayOf(0xFFFFFFFF.toInt()))
+        listOf(16, 8, 0).forEach { shift -> assertTrue(((color shr shift) and 0xFF) <= 160) }
+    }
+
     @Test fun hdmiUriEscapesTvInputId() {
         assertEquals(
             "content://android.media.tv/passthrough/com.hisense.tv.hitvinput%2F.hdmi.HdmiTvInputService%2FHW4",

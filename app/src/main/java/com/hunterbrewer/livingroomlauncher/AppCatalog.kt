@@ -3,19 +3,36 @@ package com.hunterbrewer.livingroomlauncher
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ActivityInfo
+import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
 
-/** A launchable TV app. Intents are resolved once during catalog refresh. */
+/** A launchable TV app. Intents and card art are resolved once during catalog refresh. */
 data class AppEntry(
     val packageName: String,
     val label: String,
     val icon: Drawable,
-    val launchIntent: Intent
+    val launchIntent: Intent,
+    val card: Bitmap,
+    val accent: Int,
+    val hasBanner: Boolean
 )
 
 class AppCatalog(private val context: Context) {
     private val pm = context.packageManager
     private val prefs = context.getSharedPreferences("launcher", Context.MODE_PRIVATE)
+
+    /** Card art cache keyed by package + install timestamp, so onResume refreshes are cheap. */
+    private class Art(val stamp: Long, val card: Bitmap, val accent: Int, val hasBanner: Boolean)
+    private val artCache = HashMap<String, Art>()
+
+    private fun art(pkg: String, activity: ActivityInfo?, icon: Drawable): Art {
+        val stamp = try { pm.getPackageInfo(pkg, 0).lastUpdateTime } catch (_: PackageManager.NameNotFoundException) { 0L }
+        artCache[pkg]?.takeIf { it.stamp == stamp }?.let { return it }
+        val banner = try { activity?.loadBanner(pm) ?: pm.getApplicationBanner(pkg) } catch (_: Exception) { null }
+        val (card, accent) = CardArt.render(banner, icon)
+        return Art(stamp, card, accent, banner != null).also { artCache[pkg] = it }
+    }
 
     fun load(): MutableList<AppEntry> {
         val query = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER)
@@ -30,7 +47,9 @@ class AppCatalog(private val context: Context) {
                 ?: Intent(query).setClassName(pkg, info.activityInfo.name)
             if (!byPackage.containsKey(pkg)) {
                 val label = if (pkg == "com.android.vending") "Get Apps" else info.loadLabel(pm).toString()
-                byPackage[pkg] = AppEntry(pkg, label, info.loadIcon(pm), launch)
+                val icon = info.loadIcon(pm)
+                val a = art(pkg, info.activityInfo, icon)
+                byPackage[pkg] = AppEntry(pkg, label, icon, launch, a.card, a.accent, a.hasBanner)
             }
         }
 
@@ -40,6 +59,7 @@ class AppCatalog(private val context: Context) {
         val installed = byPackage.keys.toList()
         val saved = prefs.getString("app_order", null)?.split('|')?.filter { it.isNotBlank() }
         val order = if (saved == null) AppOrder.merge(installed, preferred) else AppOrder.merge(installed, saved)
+        artCache.keys.retainAll(byPackage.keys)
         return order.mapNotNull { byPackage[it] }.toMutableList()
     }
 
@@ -53,7 +73,9 @@ class AppCatalog(private val context: Context) {
             val intent = pm.getLeanbackLaunchIntentForPackage(packageName)
                 ?: pm.getLaunchIntentForPackage(packageName)
                 ?: return
-            target[packageName] = AppEntry(packageName, pm.getApplicationLabel(info).toString().ifBlank { fallback }, pm.getApplicationIcon(info), intent)
+            val icon = pm.getApplicationIcon(info)
+            val a = art(packageName, null, icon)
+            target[packageName] = AppEntry(packageName, pm.getApplicationLabel(info).toString().ifBlank { fallback }, icon, intent, a.card, a.accent, a.hasBanner)
         } catch (_: PackageManager.NameNotFoundException) {
             // App is not installed; it should not leave a dead tile behind.
         }

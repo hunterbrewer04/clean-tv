@@ -38,6 +38,23 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
     private var centerHeld = false
     private var longPressTriggered = false
     private var selectedHeroPackage: String? = null
+    private val bitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+    private val shadowPaint = Paint(Paint.FILTER_BITMAP_FLAG).apply { color = Color.BLACK }
+    private val shadow: Bitmap = CardArt.shadow()
+    private val dst = RectF()
+
+    // Focus animation: the newly focused card grows in while the previous one settles back.
+    private var focusedKey: String? = null
+    private var previousKey: String? = null
+    private var focusT = 1f
+    private var animStart = 0L
+    private val animRunner = object : Runnable {
+        override fun run() {
+            focusT = ((System.currentTimeMillis() - animStart) / FOCUS_MS.toFloat()).coerceIn(0f, 1f)
+            invalidate()
+            if (focusT < 1f) postOnAnimation(this)
+        }
+    }
 
     private val regular: Typeface = if (Build.VERSION.SDK_INT >= 26) resources.getFont(R.font.outfit) else Typeface.create("sans", Typeface.NORMAL)
     private val light: Typeface = Typeface.create(regular, Typeface.NORMAL)
@@ -76,6 +93,12 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
         super.onDraw(canvas)
         val sx = width / DESIGN_W
         val sy = height / DESIGN_H
+        val key = if (nav.zone == Zone.GRID) apps.getOrNull(nav.index)?.packageName else null
+        if (key != focusedKey) {
+            previousKey = focusedKey; focusedKey = key
+            focusT = 0f; animStart = System.currentTimeMillis()
+            removeCallbacks(animRunner); postOnAnimation(animRunner)
+        }
         canvas.save()
         canvas.scale(sx, sy)
         drawWallpaper(canvas)
@@ -104,6 +127,7 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
 
     override fun onDetachedFromWindow() {
         removeCallbacks(clockTick)
+        removeCallbacks(animRunner)
         super.onDetachedFromWindow()
     }
 
@@ -170,16 +194,20 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
     private fun drawHero(c: Canvas) {
         if (nav.zone == Zone.GRID && nav.index / COLUMNS > 0) return
         val app = apps.firstOrNull { it.packageName == selectedHeroPackage } ?: apps.firstOrNull() ?: return
-        val color = packageColor(app.packageName)
-        paint.shader = RadialGradient(1460f, 380f, 920f, lighten(color), Color.argb(25, 0, 0, 0), Shader.TileMode.CLAMP)
+        paint.shader = RadialGradient(1460f, 380f, 920f, withAlpha(lighten(app.accent), 190), Color.TRANSPARENT, Shader.TileMode.CLAMP)
         c.drawRect(0f, 210f, DESIGN_W, 650f, paint); paint.shader = null
         if (app.packageName == "org.jellyfin.androidtv") drawJellyfinShelf(c, app) else drawAppHero(c, app)
     }
 
     private fun drawAppHero(c: Canvas, app: AppEntry) {
-        drawDrawable(c, app.icon, 150f, 300f, 150f, 150f)
-        label(c, app.label, 330f, 380f, 66f, Color.WHITE, medium)
-        label(c, "Press OK to open", 334f, 430f, 26f, Color.argb(180, 255, 255, 255), regular)
+        // Big branded card on the left, title on the right, like an Apple TV top shelf.
+        val x = 112f; val y = 268f; val w = 534f; val h = 321f
+        dst.set(x - 52f, y - 40f, x + w + 52f, y + h + 64f)
+        c.drawBitmap(shadow, null, dst, shadowPaint)
+        dst.set(x, y, x + w, y + h)
+        c.drawBitmap(app.card, null, dst, bitmapPaint)
+        label(c, app.label, 700f, 420f, 72f, Color.WHITE, medium)
+        label(c, "PRESS OK TO OPEN", 704f, 478f, 24f, Color.argb(170, 255, 255, 255), medium, 4f)
     }
 
     private fun drawJellyfinShelf(c: Canvas, app: AppEntry) {
@@ -215,21 +243,47 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
     }
 
     private fun drawAppCard(c: Canvas, app: AppEntry, x: Float, y: Float, focused: Boolean) {
-        c.save()
-        if (focused) {
-            val cx = x + CARD_W / 2f; val cy = y + CARD_H / 2f
-            c.scale(1.14f, 1.14f, cx, cy)
-            paint.color = Color.argb(105, 0, 0, 0)
-            rect.set(x - 18f, y + 12f, x + CARD_W + 18f, y + CARD_H + 36f)
-            c.drawRoundRect(rect, 28f, 28f, paint)
+        val ease = 1f - (1f - focusT) * (1f - focusT) * (1f - focusT)
+        val lift = when {
+            focused -> ease
+            app.packageName == previousKey -> 1f - ease
+            else -> 0f
         }
-        rect.set(x, y, x + CARD_W, y + CARD_H)
-        paint.color = packageColor(app.packageName); c.drawRoundRect(rect, 20f, 20f, paint)
-        paint.shader = LinearGradient(x, y, x, y + CARD_H, Color.argb(25, 255, 255, 255), Color.argb(35, 0, 0, 0), Shader.TileMode.CLAMP)
-        c.drawRoundRect(rect, 20f, 20f, paint); paint.shader = null
-        drawDrawable(c, app.icon, x + 106f, y + 39f, 100f, 100f)
+        val scale = 1f + 0.14f * lift
+        val cx = x + CARD_W / 2f; val cy = y + CARD_H / 2f
+        c.save()
+        c.translate(0f, -8f * lift)
+        c.scale(scale, scale, cx, cy)
+        if (lift > 0.01f) {
+            val pad = CardArt.SHADOW_PAD * CARD_W / CardArt.W
+            dst.set(x - pad, y - pad, x + CARD_W + pad, y + CARD_H + pad)
+            shadowPaint.alpha = (255 * lift).toInt()
+            c.drawBitmap(shadow, null, dst, shadowPaint)
+        }
+        dst.set(x, y, x + CARD_W, y + CARD_H)
+        bitmapPaint.alpha = if (nav.zone == Zone.GRID && !focused && lift < 0.01f) 225 else 255
+        c.drawBitmap(app.card, null, dst, bitmapPaint)
+        bitmapPaint.alpha = 255
+        if (lift > 0.01f) drawShine(c, x, y, lift)
+        if (editMode && focused) {
+            paint.style = Paint.Style.STROKE; paint.strokeWidth = 4f; paint.color = Color.WHITE
+            c.drawRoundRect(dst, 20f, 20f, paint); paint.style = Paint.Style.FILL
+        }
         c.restore()
-        if (focused) label(c, app.label, x + CARD_W / 2f, y + CARD_H + 51f, 27f, Color.WHITE, medium, align = Paint.Align.CENTER)
+        if (focused) label(c, app.label, x + CARD_W / 2f, y + CARD_H + 56f, 27f, withAlpha(Color.WHITE, (255 * ease).toInt()), medium, align = Paint.Align.CENTER)
+    }
+
+    /** Apple TV-style glare: a soft diagonal highlight across the top of the focused card. */
+    private fun drawShine(c: Canvas, x: Float, y: Float, lift: Float) {
+        c.save()
+        path.reset(); rect.set(x, y, x + CARD_W, y + CARD_H)
+        path.addRoundRect(rect, 20f, 20f, Path.Direction.CW)
+        c.clipPath(path)
+        paint.shader = LinearGradient(x, y, x + CARD_W * 0.7f, y + CARD_H,
+            intArrayOf(Color.argb((70 * lift).toInt(), 255, 255, 255), Color.argb((14 * lift).toInt(), 255, 255, 255), Color.TRANSPARENT),
+            floatArrayOf(0f, 0.45f, 0.75f), Shader.TileMode.CLAMP)
+        c.drawRect(rect, paint); paint.shader = null
+        c.restore()
     }
 
     private fun drawInputMenu(c: Canvas) {
@@ -326,21 +380,7 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
         c.drawText(value, x, baseline, text)
     }
 
-    private fun packageColor(pkg: String): Int = when (pkg) {
-        "org.jellyfin.androidtv" -> Color.rgb(77, 73, 170)
-        "com.netflix.ninja" -> Color.rgb(10, 10, 10)
-        "com.disney.disneyplus" -> Color.rgb(8, 45, 120)
-        "com.amazon.amazonvideo.livingroom" -> Color.rgb(15, 23, 30)
-        "com.tubitv" -> Color.rgb(102, 0, 238)
-        "com.fubo.firetv.screen" -> Color.rgb(250, 70, 22)
-        "com.hulu.livingroomplus" -> Color.rgb(20, 175, 105)
-        "com.wbd.stream" -> Color.rgb(0, 39, 184)
-        "com.peacocktv.peacockandroid" -> Color.BLACK
-        "com.google.android.youtube.tv" -> Color.rgb(235, 25, 25)
-        "com.spotify.tv.android" -> Color.rgb(18, 18, 18)
-        "com.android.vending" -> Color.rgb(10, 93, 220)
-        else -> Color.rgb(40, 47, 62)
-    }
+    private fun withAlpha(color: Int, alpha: Int) = (color and 0x00FFFFFF) or (alpha.coerceIn(0, 255) shl 24)
 
     private fun lighten(color: Int): Int = Color.rgb((Color.red(color) + 70).coerceAtMost(255), (Color.green(color) + 70).coerceAtMost(255), (Color.blue(color) + 70).coerceAtMost(255))
 
@@ -351,5 +391,6 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
         private const val CARD_W = 312f
         private const val CARD_H = 187f
         private const val ROW_STEP = 270f
+        private const val FOCUS_MS = 170L
     }
 }
