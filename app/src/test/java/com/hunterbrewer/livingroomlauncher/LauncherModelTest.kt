@@ -82,21 +82,6 @@ class LauncherModelTest {
         assertEquals(listOf(MenuOption.MOVE), AppMenu.options(removable = false))
     }
 
-    @Test fun greetingSpacingStretchesToTargetWidth() {
-        // 200px wide unspaced, +60px per 0.1em of spacing -> 0.5em reaches 500px.
-        assertEquals(0.5f, TextFit.spacingToFill(200f, 260f, 0.1f, 500f, 2f), 0.0001f)
-    }
-
-    @Test fun greetingSpacingTrimsHalfSpacingAtEachEnd() {
-        // Same text, but one em-of-size (30px/em) of the spacing sits outside the ink: (500-200)/(600-30).
-        assertEquals(300f / 570f, TextFit.spacingToFill(200f, 260f, 0.1f, 500f, 2f, trimPerEm = 30f), 0.0001f)
-    }
-
-    @Test fun greetingSpacingNeverNegativeOrExcessive() {
-        assertEquals(0f, TextFit.spacingToFill(200f, 260f, 0.1f, 150f, 2f), 0f)
-        assertEquals(1f, TextFit.spacingToFill(200f, 260f, 0.1f, 5000f, 1f), 0f)
-    }
-
     @Test fun hdmiUriEscapesTvInputId() {
         assertEquals(
             "content://android.media.tv/passthrough/com.hisense.tv.hitvinput%2F.hdmi.HdmiTvInputService%2FHW4",

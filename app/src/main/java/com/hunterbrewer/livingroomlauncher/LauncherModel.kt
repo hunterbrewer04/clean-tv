@@ -99,20 +99,6 @@ object AppMenu {
         if (removable) listOf(MenuOption.MOVE, MenuOption.UNINSTALL) else listOf(MenuOption.MOVE)
 }
 
-object TextFit {
-    /**
-     * Letter spacing (in em) that makes a line's ink span [target] px.
-     * [width0] = measured width with no spacing, [widthAtSample] = width at [sampleEm] spacing.
-     * Android pads half the spacing before the first and after the last glyph; pass the text size as
-     * [trimPerEm] so that padding is excluded from the visible width.
-     */
-    fun spacingToFill(width0: Float, widthAtSample: Float, sampleEm: Float, target: Float, maxEm: Float, trimPerEm: Float = 0f): Float {
-        val growthPerEm = (widthAtSample - width0) / sampleEm - trimPerEm
-        if (growthPerEm <= 0f) return 0f
-        return ((target - width0) / growthPerEm).coerceIn(0f, maxEm)
-    }
-}
-
 object TvInputs {
     fun passthroughUri(inputId: String): String =
         "content://android.media.tv/passthrough/" + URLEncoder.encode(inputId, "UTF-8").replace("+", "%20")

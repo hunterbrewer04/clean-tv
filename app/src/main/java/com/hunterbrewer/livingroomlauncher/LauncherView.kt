@@ -40,9 +40,6 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
     private var menuApp: AppEntry? = null
     private var menuOptions: List<MenuOption> = emptyList()
     private var menuIndex = 0
-    // Greeting letter-spacing is fitted to the clock+date line width; cached per greeting/date text.
-    private var greetingKey = ""
-    private var greetingEm = 0f
     private val bitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val shadowPaint = Paint(Paint.FILTER_BITMAP_FLAG).apply { color = Color.BLACK }
     private val shadow: Bitmap = CardArt.shadow()
@@ -164,7 +161,7 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
         label(c, amPm.format(now), 362f, 174f, 30f, Color.argb(190, 255, 255, 255), medium, 2f)
         paint.color = Color.argb(80, 255, 255, 255); c.drawRoundRect(434f, 116f, 436f, 177f, 1f, 1f, paint)
         label(c, dateText, DATE_X, 165f, DATE_SIZE, Color.argb(170, 255, 255, 255), regular, 3f)
-        drawGreeting(c, greeting, dateText)
+        drawGreeting(c, greeting)
 
         val names = arrayOf("Inputs", "Wi-Fi", "Settings")
         val widths = floatArrayOf(196f, 188f, 214f)
@@ -176,21 +173,9 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
         }
     }
 
-    /** The greeting stretches (slightly larger + letter-spaced) from the clock's left edge to the date's right edge. */
-    private fun drawGreeting(c: Canvas, greeting: String, dateText: String) {
-        val key = "$greeting|$dateText"
-        if (key != greetingKey) {
-            text.typeface = regular; text.textSize = DATE_SIZE; text.letterSpacing = 3f / DATE_SIZE
-            val dateInkEnd = DATE_X + text.measureText(dateText) - text.letterSpacing * DATE_SIZE / 2f
-            text.typeface = medium; text.textSize = GREET_SIZE
-            text.letterSpacing = 0f; val w0 = text.measureText(greeting)
-            text.letterSpacing = 0.1f; val w1 = text.measureText(greeting)
-            greetingEm = TextFit.spacingToFill(w0, w1, 0.1f, dateInkEnd - GREET_X, 1.2f, trimPerEm = GREET_SIZE)
-            greetingKey = key
-        }
-        text.typeface = medium; text.textSize = GREET_SIZE; text.textAlign = Paint.Align.LEFT
-        text.letterSpacing = greetingEm; text.color = Color.argb(165, 255, 255, 255)
-        c.drawText(greeting, GREET_X - greetingEm * GREET_SIZE / 2f, 82f, text)
+    /** Greeting sits above the clock with normal tracking, sized up a touch, with a small gap below it. */
+    private fun drawGreeting(c: Canvas, greeting: String) {
+        label(c, greeting, GREET_X, GREET_BASELINE, GREET_SIZE, Color.argb(165, 255, 255, 255), medium, GREET_TRACKING)
     }
 
     private fun drawPill(c: Canvas, x: Float, y: Float, w: Float, h: Float, name: String, icon: Int, focused: Boolean) {
@@ -441,7 +426,9 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
         private const val GRID_TOP = 300f
         private const val VISIBLE_ROWS = 3
         private const val GREET_X = 112f
-        private const val GREET_SIZE = 30f
+        private const val GREET_SIZE = 32f
+        private const val GREET_TRACKING = 4f
+        private const val GREET_BASELINE = 68f
         private const val DATE_X = 470f
         private const val DATE_SIZE = 30f
     }

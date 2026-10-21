@@ -12,6 +12,6 @@ printf 'sdk.dir=%s
 ' "$ANDROID_HOME" > local.properties
 ./gradlew clean testDebugUnitTest lintDebug assembleRelease --no-daemon
 mkdir -p dist
-cp app/build/outputs/apk/release/app-release.apk dist/living-room-launcher-v0.4.0.apk
-(cd dist && sha256sum living-room-launcher-v0.4.0.apk > living-room-launcher-v0.4.0.apk.sha256)
-echo "Built: $ROOT/dist/living-room-launcher-v0.4.0.apk"
+cp app/build/outputs/apk/release/app-release.apk dist/living-room-launcher-v0.4.1.apk
+(cd dist && sha256sum living-room-launcher-v0.4.1.apk > living-room-launcher-v0.4.1.apk.sha256)
+echo "Built: $ROOT/dist/living-room-launcher-v0.4.1.apk"

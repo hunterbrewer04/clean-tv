@@ -3,7 +3,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ADB="${ADB:-$HOME/.local/bin/adb}"
 TV="${TV:-192.168.1.92:5555}"
-APK="${APK:-$ROOT/dist/living-room-launcher-v0.4.0.apk}"
+APK="${APK:-$ROOT/dist/living-room-launcher-v0.4.1.apk}"
 [[ -f "$APK" ]] || { echo "Missing APK: $APK" >&2; exit 1; }
 "$ADB" connect "$TV" >/dev/null
 "$ADB" -s "$TV" get-state >/dev/null
