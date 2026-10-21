@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ActivityInfo
+import android.content.pm.ApplicationInfo
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
 
@@ -15,7 +16,9 @@ data class AppEntry(
     val launchIntent: Intent,
     val card: Bitmap,
     val accent: Int,
-    val hasBanner: Boolean
+    val hasBanner: Boolean,
+    /** True only for apps the user installed (system/preloaded apps can't be uninstalled for the user). */
+    val removable: Boolean
 )
 
 class AppCatalog(private val context: Context) {
@@ -49,7 +52,8 @@ class AppCatalog(private val context: Context) {
                 val label = if (pkg == "com.android.vending") "Get Apps" else info.loadLabel(pm).toString()
                 val icon = info.loadIcon(pm)
                 val a = art(pkg, info.activityInfo, icon)
-                byPackage[pkg] = AppEntry(pkg, label, icon, launch, a.card, a.accent, a.hasBanner)
+                val removable = info.activityInfo.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM == 0
+                byPackage[pkg] = AppEntry(pkg, label, icon, launch, a.card, a.accent, a.hasBanner, removable)
             }
         }
 
@@ -75,7 +79,7 @@ class AppCatalog(private val context: Context) {
                 ?: return
             val icon = pm.getApplicationIcon(info)
             val a = art(packageName, null, icon)
-            target[packageName] = AppEntry(packageName, pm.getApplicationLabel(info).toString().ifBlank { fallback }, icon, intent, a.card, a.accent, a.hasBanner)
+            target[packageName] = AppEntry(packageName, pm.getApplicationLabel(info).toString().ifBlank { fallback }, icon, intent, a.card, a.accent, a.hasBanner, info.flags and ApplicationInfo.FLAG_SYSTEM == 0)
         } catch (_: PackageManager.NameNotFoundException) {
             // App is not installed; it should not leave a dead tile behind.
         }

@@ -22,6 +22,7 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
         fun openWifi()
         fun openSettings()
         fun switchInput(input: TvInput)
+        fun uninstall(entry: AppEntry)
     }
 
     data class TvInput(val label: String, val detail: String, val id: String)
@@ -35,6 +36,13 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
     private var editMode = false
     private var centerHeld = false
     private var longPressTriggered = false
+    // Hold-OK app menu: which app it's for and which option is focused.
+    private var menuApp: AppEntry? = null
+    private var menuOptions: List<MenuOption> = emptyList()
+    private var menuIndex = 0
+    // Greeting letter-spacing is fitted to the clock+date line width; cached per greeting/date text.
+    private var greetingKey = ""
+    private var greetingEm = 0f
     private val bitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val shadowPaint = Paint(Paint.FILTER_BITMAP_FLAG).apply { color = Color.BLACK }
     private val shadow: Bitmap = CardArt.shadow()
@@ -102,6 +110,7 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
         drawHeader(canvas)
         if (nav.zone == Zone.INPUTS) drawInputMenu(canvas)
         if (editMode) drawEditHint(canvas)
+        menuApp?.let { drawAppMenu(canvas, it) }
         canvas.restore()
     }
 
@@ -149,11 +158,13 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
 
         val now = Date()
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-        label(c, TimeLabels.greeting(hour), 112f, 79f, 25f, Color.argb(165, 255, 255, 255), medium, 5f)
+        val greeting = TimeLabels.greeting(hour)
+        val dateText = date.format(now).uppercase(Locale.US)
         label(c, clock.format(now), 104f, 181f, 112f, Color.WHITE, light)
         label(c, amPm.format(now), 362f, 174f, 30f, Color.argb(190, 255, 255, 255), medium, 2f)
         paint.color = Color.argb(80, 255, 255, 255); c.drawRoundRect(434f, 116f, 436f, 177f, 1f, 1f, paint)
-        label(c, date.format(now).uppercase(Locale.US), 470f, 165f, 30f, Color.argb(170, 255, 255, 255), regular, 3f)
+        label(c, dateText, DATE_X, 165f, DATE_SIZE, Color.argb(170, 255, 255, 255), regular, 3f)
+        drawGreeting(c, greeting, dateText)
 
         val names = arrayOf("Inputs", "Wi-Fi", "Settings")
         val widths = floatArrayOf(196f, 188f, 214f)
@@ -163,6 +174,23 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
             drawPill(c, x, 112f, widths[i], 84f, names[i], i, focused)
             x += widths[i] + 20f
         }
+    }
+
+    /** The greeting stretches (slightly larger + letter-spaced) from the clock's left edge to the date's right edge. */
+    private fun drawGreeting(c: Canvas, greeting: String, dateText: String) {
+        val key = "$greeting|$dateText"
+        if (key != greetingKey) {
+            text.typeface = regular; text.textSize = DATE_SIZE; text.letterSpacing = 3f / DATE_SIZE
+            val dateInkEnd = DATE_X + text.measureText(dateText) - text.letterSpacing * DATE_SIZE / 2f
+            text.typeface = medium; text.textSize = GREET_SIZE
+            text.letterSpacing = 0f; val w0 = text.measureText(greeting)
+            text.letterSpacing = 0.1f; val w1 = text.measureText(greeting)
+            greetingEm = TextFit.spacingToFill(w0, w1, 0.1f, dateInkEnd - GREET_X, 1.2f, trimPerEm = GREET_SIZE)
+            greetingKey = key
+        }
+        text.typeface = medium; text.textSize = GREET_SIZE; text.textAlign = Paint.Align.LEFT
+        text.letterSpacing = greetingEm; text.color = Color.argb(165, 255, 255, 255)
+        c.drawText(greeting, GREET_X - greetingEm * GREET_SIZE / 2f, 82f, text)
     }
 
     private fun drawPill(c: Canvas, x: Float, y: Float, w: Float, h: Float, name: String, icon: Int, focused: Boolean) {
@@ -266,14 +294,75 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
 
     private fun drawEditHint(c: Canvas) {
         paint.color = Color.argb(220, 26, 28, 34); rect.set(650f, 1000f, 1270f, 1058f); c.drawRoundRect(rect, 30f, 30f, paint)
-        label(c, "REARRANGING  ·  ARROWS MOVE  ·  OK TO SAVE", 960f, 1038f, 23f, Color.WHITE, medium, align = Paint.Align.CENTER)
+        label(c, "MOVING  ·  ARROWS MOVE  ·  OK TO SAVE", 960f, 1038f, 23f, Color.WHITE, medium, align = Paint.Align.CENTER)
+    }
+
+    private fun drawAppMenu(c: Canvas, app: AppEntry) {
+        paint.color = Color.argb(150, 0, 0, 0); c.drawRect(0f, 0f, DESIGN_W, DESIGN_H, paint)
+        val w = 640f; val rowH = 92f
+        val h = 330f + menuOptions.size * (rowH + 12f)
+        val x = (DESIGN_W - w) / 2f; val y = (DESIGN_H - h) / 2f
+        paint.color = Color.argb(240, 26, 29, 36); rect.set(x, y, x + w, y + h); c.drawRoundRect(rect, 36f, 36f, paint)
+        // App card + name on top so it's obvious which app this menu is for.
+        val cw = 300f; val ch = cw * CardArt.H / CardArt.W
+        dst.set(x + (w - cw) / 2f, y + 34f, x + (w + cw) / 2f, y + 34f + ch)
+        c.drawBitmap(app.card, null, dst, bitmapPaint)
+        label(c, app.label, x + w / 2f, y + 34f + ch + 56f, 34f, Color.WHITE, medium, align = Paint.Align.CENTER)
+        menuOptions.forEachIndexed { i, opt ->
+            val ry = y + 330f + i * (rowH + 12f)
+            val focused = i == menuIndex
+            rect.set(x + 30f, ry, x + w - 30f, ry + rowH)
+            paint.color = if (focused) Color.WHITE else Color.argb(30, 255, 255, 255); c.drawRoundRect(rect, 24f, 24f, paint)
+            val (title, sub) = when (opt) {
+                MenuOption.MOVE -> "Move" to "Rearrange on the home screen"
+                MenuOption.UNINSTALL -> "Uninstall" to "Deletes the app and its login"
+            }
+            val titleColor = when {
+                opt == MenuOption.UNINSTALL && focused -> Color.rgb(214, 40, 40)
+                opt == MenuOption.UNINSTALL -> Color.rgb(255, 120, 120)
+                focused -> Color.rgb(20, 22, 27)
+                else -> Color.WHITE
+            }
+            label(c, title, x + 64f, ry + 44f, 31f, titleColor, medium)
+            label(c, sub, x + 64f, ry + 76f, 21f, if (focused) Color.rgb(95, 98, 105) else Color.argb(140, 255, 255, 255), regular)
+        }
+    }
+
+    private fun openMenu(app: AppEntry) {
+        menuApp = app; menuOptions = AppMenu.options(app.removable); menuIndex = 0
+    }
+
+    private fun menuKey(keyCode: Int): Boolean {
+        when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_UP -> menuIndex = (menuIndex - 1).coerceAtLeast(0)
+            KeyEvent.KEYCODE_DPAD_DOWN -> menuIndex = (menuIndex + 1).coerceAtMost(menuOptions.lastIndex)
+            KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_HOME -> menuApp = null
+            else -> return true
+        }
+        invalidate(); return true
+    }
+
+    private fun chooseMenuOption() {
+        val app = menuApp ?: return
+        val option = menuOptions.getOrNull(menuIndex)
+        menuApp = null
+        when (option) {
+            MenuOption.MOVE -> editMode = true
+            MenuOption.UNINSTALL -> actions.uninstall(app)
+            null -> {}
+        }
+        invalidate()
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (menuApp != null && keyCode != KeyEvent.KEYCODE_DPAD_CENTER && keyCode != KeyEvent.KEYCODE_ENTER) return menuKey(keyCode)
         when (keyCode) {
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
                 if (event.repeatCount == 0) { centerHeld = true; longPressTriggered = false }
-                else if (event.repeatCount >= 2 && nav.zone == Zone.GRID && !editMode) { editMode = true; longPressTriggered = true; invalidate() }
+                else if (event.repeatCount >= 2 && nav.zone == Zone.GRID && !editMode && menuApp == null && !longPressTriggered) {
+                    apps.getOrNull(nav.index)?.let { openMenu(it) }
+                    longPressTriggered = true; invalidate()
+                }
                 return true
             }
             KeyEvent.KEYCODE_DPAD_LEFT -> return navigate(Direction.LEFT)
@@ -296,7 +385,11 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
         if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
             if (centerHeld && !longPressTriggered) {
-                if (editMode) { editMode = false; actions.saveOrder(apps) } else activate()
+                when {
+                    menuApp != null -> chooseMenuOption()
+                    editMode -> { editMode = false; actions.saveOrder(apps) }
+                    else -> activate()
+                }
             }
             centerHeld = false; longPressTriggered = false; invalidate(); return true
         }
@@ -347,5 +440,9 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
         private const val FOCUS_MS = 170L
         private const val GRID_TOP = 300f
         private const val VISIBLE_ROWS = 3
+        private const val GREET_X = 112f
+        private const val GREET_SIZE = 30f
+        private const val DATE_X = 470f
+        private const val DATE_SIZE = 30f
     }
 }

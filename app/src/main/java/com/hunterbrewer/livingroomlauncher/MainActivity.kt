@@ -81,6 +81,12 @@ class MainActivity : Activity(), LauncherView.Actions {
 
     override fun saveOrder(entries: List<AppEntry>) = catalog.saveOrder(entries)
 
+    /** Hands off to the system uninstaller, which shows its own "Do you want to uninstall?" confirmation. */
+    override fun uninstall(entry: AppEntry) {
+        if (!entry.removable) return
+        startSafely(Intent(Intent.ACTION_DELETE, Uri.parse("package:${entry.packageName}")), "Uninstall")
+    }
+
     override fun openWifi() = startSafely(Intent(Settings.ACTION_WIFI_SETTINGS), "Wi-Fi settings")
 
     override fun openSettings() = startSafely(Intent(Settings.ACTION_SETTINGS), "TV settings")
