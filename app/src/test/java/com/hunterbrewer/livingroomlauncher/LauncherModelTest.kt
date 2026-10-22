@@ -88,7 +88,7 @@ class LauncherModelTest {
     @Test fun inputsKeepHardwareOrderAndDropAppAndAirplayInputs() {
         // Shape of what a Hisense/MediaTek panel actually reports (order scrambled like dumpsys shows it).
         val reported = listOf(
-            raw("v/.tuner.Tuner/HW0", TvInputs.TYPE_TUNER, "Antenna"),
+            raw("com.hisense.tv.hitvinput/.tuner.Tuner/HW0", TvInputs.TYPE_TUNER, "Antenna"),
             raw("v/.hdmi.Hdmi/HW7", TvInputs.TYPE_HDMI, "HDMI 4"),
             raw("com.fubo/.FuboTvInputService", TvInputs.TYPE_TUNER, "fubo", system = false),
             raw("v/.hdmi.Hdmi/HW5", TvInputs.TYPE_HDMI, "HDMI 2"),
@@ -99,9 +99,26 @@ class LauncherModelTest {
             raw("v/.hdmi.Hdmi/HW6", TvInputs.TYPE_HDMI, "HDMI 3")
         )
         val menu = TvInputs.select(reported)
-        assertEquals(listOf("HDMI 1", "HDMI 2", "HDMI 3", "HDMI 4", "AV", "Antenna"), menu.map { it.label })
-        assertEquals("v/.tuner.Tuner/HW0", menu.last().id)
+        assertEquals(listOf("HDMI 1", "HDMI 2", "HDMI 3", "HDMI 4", "AV", "Live TV"), menu.map { it.label })
+        assertEquals("com.hisense.tv.hitvinput/.tuner.Tuner/HW0", menu.last().id)
         assertTrue(menu.last().isTuner)
+    }
+
+    @Test fun preloadedAppTunerNeverWinsOverHardwareTuner() {
+        // What a TCL Google TV reports: Google's Movies app and TCL's IPTV app are system "tuners", sorted ahead.
+        val menu = TvInputs.select(listOf(
+            raw("com.google.android.videos/.tv.usecase.tvinput.playback.TvInputService", TvInputs.TYPE_TUNER, "Google Play Movies & TV"),
+            raw("com.tcl.channelplus/com.tcl.iptv.service.InputService", TvInputs.TYPE_TUNER, "Channel Plus"),
+            raw("com.tcl.tvinput/.TDTVInputService/HW1413742848", TvInputs.TYPE_TUNER, "TV"),
+            raw("com.tcl.tvinput/.passthroughinput.TvPassThroughService/HW1413743104", TvInputs.TYPE_HDMI, "HDMI 1")
+        ))
+        assertEquals(listOf("HDMI 1", "Live TV"), menu.map { it.label })
+        assertEquals("com.tcl.tvinput/.TDTVInputService/HW1413742848", menu.last().id)
+    }
+
+    @Test fun googleAppTunerAloneIsDropped() {
+        val menu = TvInputs.select(listOf(raw("com.google.android.videos/.TvInputService", TvInputs.TYPE_TUNER, "Movies")))
+        assertTrue(menu.isEmpty())
     }
 
     @Test fun duplicateGenericLabelsGetNumbered() {
@@ -133,6 +150,14 @@ class LauncherModelTest {
     @Test fun streamingBoxWithNoInputsGivesEmptyMenu() {
         assertTrue(TvInputs.select(emptyList()).isEmpty())
         assertTrue(TvInputs.select(listOf(raw("app/.Svc", TvInputs.TYPE_OTHER, "App"))).isEmpty())
+    }
+
+    @Test fun remoteAppKeysMapToTheirApps() {
+        assertEquals("com.netflix.ninja", AppKeys.targetFor(4062))
+        assertEquals("com.google.android.youtube.tv", AppKeys.targetFor(4065))
+        assertEquals(AppKeys.SETTINGS, AppKeys.targetFor(4077))
+        assertEquals(AppKeys.INPUTS, AppKeys.targetFor(android.view.KeyEvent.KEYCODE_TV_INPUT))
+        assertNull(AppKeys.targetFor(android.view.KeyEvent.KEYCODE_DPAD_CENTER))
     }
 
     @Test fun hdmiUriEscapesTvInputId() {

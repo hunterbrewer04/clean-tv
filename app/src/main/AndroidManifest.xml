@@ -28,5 +28,10 @@
             <intent-filter><action android:name="android.service.dreams.DreamService" /></intent-filter>
             <meta-data android:name="android.service.dream" android:resource="@xml/dream" />
         </service>
+        <!-- Optional: remote app buttons on firmware where only the stock launcher handled them. Off until enabled. -->
+        <service android:name=".AppKeyService" android:exported="true" android:label="@string/app_keys_label" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter><action android:name="android.accessibilityservice.AccessibilityService" /></intent-filter>
+            <meta-data android:name="android.accessibilityservice" android:resource="@xml/app_keys" />
+        </service>
     </application>
 </manifest>

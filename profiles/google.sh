@@ -54,6 +54,9 @@ PROTECT=(
   com.google.android.tv.frameworkpackagestubs com.google.android.ext.services
   "$PKG"
 )
+# Exact packages a brand profile has tested and lets through a protected prefix. Never overrides PROTECT.
+ALLOW=()
+
 # Whole namespaces that run inputs, tuners, picture/audio, and remotes on the common TV chipsets.
 PROTECT_PREFIX=(
   android com.android.                                       # AOSP framework (incl. android.auto_generated_rro_*)

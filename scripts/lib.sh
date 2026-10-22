@@ -90,6 +90,7 @@ batch_packages() { local v="BATCH_${1//-/_}[@]"; printf '%s\n' "${!v}"; }
 is_protected() {
   local p="$1" x
   for x in "${PROTECT[@]}"; do [[ "$p" == "$x" ]] && return 0; done
+  for x in "${ALLOW[@]}"; do [[ "$p" == "$x" ]] && return 1; done
   for x in "${PROTECT_PREFIX[@]}"; do [[ "$p" == "$x"* ]] && return 0; done
   return 1
 }

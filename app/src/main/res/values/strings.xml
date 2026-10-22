@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_keys_label">Remote app buttons</string>
+    <string name="app_keys_description">Makes the remote\'s Netflix, YouTube, Prime Video, Apple TV and Input buttons work. Only listens for those buttons; reads nothing on screen.</string>
+</resources>

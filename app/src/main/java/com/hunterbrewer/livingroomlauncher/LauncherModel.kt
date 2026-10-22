@@ -99,6 +99,21 @@ object AppMenu {
         if (removable) listOf(MenuOption.MOVE, MenuOption.UNINSTALL) else listOf(MenuOption.MOVE)
 }
 
+/** Vendor remote keycodes the stock launcher used to answer. Values verified on a TCL Google TV (BeyondTV4). */
+object AppKeys {
+    const val SETTINGS = "settings"
+    const val INPUTS = "inputs"
+    private val targets = mapOf(
+        178 to INPUTS,                                 // KEYCODE_TV_INPUT: TCL routes it via the stock launcher too
+        4062 to "com.netflix.ninja",                   // TCL_NETFLIX
+        4065 to "com.google.android.youtube.tv",       // TCL_YOUTUBE
+        4099 to "com.amazon.amazonvideo.livingroom",   // TCL_PRIMEVIDEO
+        4160 to "com.apple.atve.androidtv.appletv",    // TCL_APPLETV
+        4077 to SETTINGS                               // TCL_SET (gear): stock opened its quick panel
+    )
+    fun targetFor(keyCode: Int): String? = targets[keyCode]
+}
+
 /** A physical source the Inputs menu can switch to. */
 data class InputSource(val id: String, val label: String, val detail: String, val isTuner: Boolean)
 
@@ -152,12 +167,16 @@ object TvInputs {
                 else -> false                           // TYPE_OTHER: AirPlay receivers, app services
             }
         }.sortedWith(compareBy<Raw>({ rank.indexOf(it.type) }, { naturalKey(it.id) })) // hardware (port) order
-        // Many TVs expose several tuner inputs (antenna, cable, ATSC 3.0). One Live TV entry is enough.
-        val firstTuner = physical.firstOrNull { it.type == TYPE_TUNER }
+        // Many TVs expose several tuner inputs (antenna, cable, ATSC 3.0). One Live TV entry is enough, and it must be
+        // the panel's real tuner: preloaded system apps (Google TV's Movies app, vendor IPTV) also register as tuners.
+        // Hardware inputs get framework-generated ids ending in "/HW<n>", so prefer those.
+        val tuners = physical.filter { it.type == TYPE_TUNER }
+        val firstTuner = tuners.firstOrNull { isHardwareId(it.id) } ?: tuners.firstOrNull { !it.id.startsWith("com.google.") }
         val kept = physical.filter { it.type != TYPE_TUNER || it === firstTuner }
 
         // Firmware often labels every port just "HDMI"; number duplicates so the menu stays usable.
-        val baseLabels = kept.map { it.label?.trim().orEmpty().ifEmpty { kindName(it.type) } }
+        // Tuner labels are whatever the vendor called its service ("TV", "DTV", "Antenna"); always say "Live TV".
+        val baseLabels = kept.map { if (it.type == TYPE_TUNER) kindName(TYPE_TUNER) else it.label?.trim().orEmpty().ifEmpty { kindName(it.type) } }
         val counts = baseLabels.groupingBy { it }.eachCount()
         val seen = HashMap<String, Int>()
         return kept.mapIndexed { i, raw ->
@@ -176,6 +195,9 @@ object TvInputs {
         label.startsWith(kindName(type), ignoreCase = true) -> ""
         else -> kindName(type)
     }
+
+    private val hardwareId = Regex("/HW\\d+$")
+    fun isHardwareId(id: String) = hardwareId.containsMatchIn(id)
 
     /** "HW10" sorts after "HW9": digit runs compare numerically. */
     private fun naturalKey(s: String): String =

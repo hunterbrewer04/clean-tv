@@ -107,6 +107,17 @@ TV=bedroom APPLY=1 scripts/debloat.sh extra com.vendor.something
 
 Everything disabled goes into `state/<serial>/disabled-by-us.txt`. Each script refuses to touch anything matched by `PROTECT` or `PROTECT_PREFIX` in the profile: Play services, casting, the remote service, WebView, keyboards, TV settings/providers, chipset namespaces (`com.mediatek.`, `com.mstar.`, `com.realtek.`, `com.amlogic.`, ...), and each brand's own input/OTA/system stack.
 
+## Remote app buttons (TCL and similar)
+
+On some firmware (TCL Google TV, at least) the remote's Netflix, YouTube, Prime Video, Apple TV, gear and Input keys are vendor keycodes that only Google's stock home screen answers, so they go dead after the handover. The launcher ships an optional accessibility service, **Remote app buttons**, that catches just those keys and opens the matching app. It reads nothing on screen, and any key it doesn't know passes through untouched.
+
+```bash
+TV=bedroom APPLY=1 scripts/app-keys.sh     # same as Settings > Accessibility > Remote app buttons > On
+```
+
+> [!NOTE]
+> TCL's auto-start blocker (`APP_AUTO_START` app-op) resets to "ignore" on every boot, which stops Android from binding the service. Until that's solved, re-run `scripts/app-keys.sh` after a reboot if the app buttons stop working.
+
 ## Undo, and after updates
 
 ```bash
