@@ -1,16 +1,23 @@
 #!/usr/bin/env bash
-set -euo pipefail
-ADB="${ADB:-$HOME/.local/bin/adb}"
-TV="${TV:-192.168.1.92:5555}"
-PKG="com.hunterbrewer.livingroomlauncher"
-[[ "${APPLY:-}" == "1" ]] || { echo 'Dry run. Re-run with APPLY=1 only after the alongside-stock test checklist passes.'; exit 0; }
-"$ADB" connect "$TV" >/dev/null
-"$ADB" -s "$TV" shell pm path "$PKG" >/dev/null || { echo 'Launcher is not installed.' >&2; exit 1; }
-# This phase changes only the preferred Home and dream. It does not disable stock packages.
-"$ADB" -s "$TV" shell cmd package set-home-activity --user 0 "$PKG/.MainActivity"
-"$ADB" -s "$TV" shell settings put secure screensaver_components "$PKG/.ClockDreamService"
-"$ADB" -s "$TV" shell settings put secure screensaver_default_component "$PKG/.ClockDreamService"
+# Make the launcher the preferred Home and its clock the screensaver. Disables nothing.
+#   TV=... scripts/activate-home.sh            (dry run)
+#   TV=... APPLY=1 scripts/activate-home.sh
+# Only run this after the launcher has passed the side-by-side checklist in the README.
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+installed "$PKG" || die "Launcher is not installed. Run scripts/install.sh first."
+
+blockers="$(home_blockers)"
+echo "Will set preferred Home to $OURS and the screensaver to $OUR_DREAM."
+[[ -z "$blockers" ]] || printf 'Out-ranking Home apps (handled later by the handover batch):\n%s\n' "$(sed 's/^/  /' <<<"$blockers")"
+require_apply
+
+record_stock
+a shell cmd package set-home-activity --user 0 "$OURS"
+a shell settings put secure screensaver_components "$OUR_DREAM"
+a shell settings put secure screensaver_default_component "$OUR_DREAM"
+touch "$STATE/home-activated"
 sleep 2
-"$ADB" -s "$TV" shell input keyevent KEYCODE_HOME
-printf 'Resolved Home: '
-"$ADB" -s "$TV" shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -n 1
+a shell input keyevent KEYCODE_HOME
+echo "HOME role:     $(home_role)"
+echo "Resolved HOME: $(home_resolved)"
+[[ -z "$blockers" ]] || echo "Home button reaches the launcher after: APPLY=1 scripts/debloat.sh handover"

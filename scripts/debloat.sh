@@ -1,50 +1,72 @@
 #!/usr/bin/env bash
-# Usage: scripts/debloat.sh <batch>            (dry run)
-#        APPLY=1 scripts/debloat.sh <batch>    (disable that batch)
-# Batches: handover ambient google-extras vidaa preloads. Run one, test the TV, then the next.
-set -euo pipefail
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-source "$ROOT/scripts/batches.sh"
-ADB="${ADB:-$HOME/.local/bin/adb}"
-TV="${TV:-192.168.1.92:5555}"
-PKG=com.hunterbrewer.livingroomlauncher
-LEDGER="$ROOT/state/disabled-by-us.txt"
-BATCH="${1:-}"
-[[ " ${BATCH_ORDER[*]} " == *" $BATCH "* ]] || { echo "Usage: $0 <${BATCH_ORDER[*]// /|}>" >&2; exit 2; }
-mapfile -t PKGS < <(batch_packages "$BATCH")
-a() { "$ADB" -s "$TV" "$@"; }
-home() { a shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -n 1 | tr -d '\r'; }
+# Disable one batch from the TV's profile, or specific packages. Dry run unless APPLY=1.
+#   TV=... scripts/debloat.sh handover                 (always first, after activate-home.sh)
+#   TV=... APPLY=1 scripts/debloat.sh ambient
+#   TV=... APPLY=1 scripts/debloat.sh extra com.example.bloat [more...]
+# Run one batch, use the TV for a bit (casting, remote, inputs, apps), then do the next.
+# Every package goes into state/<serial>/disabled-by-us.txt so restore.sh undoes exactly what we changed.
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+BATCH="${1:-}"; shift || true
+SLEEP="${DISABLE_SLEEP:-15}"   # some firmware (Hisense) drops a disable that's followed too quickly by a reboot
 
-echo "Batch '$BATCH' disables (user 0):"; printf '  %s\n' "${PKGS[@]}"
-[[ "${APPLY:-}" == "1" ]] || { echo 'Dry run. Re-run with APPLY=1.'; exit 0; }
-
-"$ADB" connect "$TV" >/dev/null
-if [[ "$BATCH" == handover ]]; then
-  # launcherx declares HOME priority 2 (setupwraith 1, ours 0), and Android always picks the highest priority,
-  # so HOME can't resolve to us until these two are disabled. Require that we hold the HOME role instead.
-  a shell dumpsys role | grep -A1 'name=android.app.role.HOME' | grep -q "holders=$PKG" \
-    || { echo 'Refusing: our launcher does not hold the HOME role. Run APPLY=1 scripts/activate-home.sh first.' >&2; exit 1; }
+if [[ "$BATCH" == extra ]]; then
+  [[ $# -gt 0 ]] || die "Usage: $0 extra <package> [package...]"
+  PKGS=("$@")
+elif [[ -n "$BATCH" && " ${BATCH_ORDER[*]} " == *" $BATCH "* ]]; then
+  mapfile -t PKGS < <(batch_packages "$BATCH")
 else
-  [[ "$(home)" == "$PKG/.MainActivity" ]] || { echo "Refusing: our launcher is not the resolved HOME ($(home)). Run the handover batch first." >&2; exit 1; }
+  die "Usage: $0 <$(IFS='|'; echo "${BATCH_ORDER[*]}")|extra pkg...>   (profile: $PROFILE)"
 fi
-if [[ "$BATCH" == handover ]] && a shell dumpsys wifi | grep -q 'cname=com.google.android.tungsten.setupwraith'; then
-  echo 'Refusing: a saved Wi-Fi network is owned by setupwraith; disabling it would delete Wi-Fi. Forget + rejoin the network in Settings first.' >&2; exit 1
+
+if [[ "$BATCH" == handover ]]; then
+  # Android picks the highest-priority HOME activity before it looks at the HOME role, so everything that
+  # out-ranks us has to go in this batch. Google's own packages (setup wizard, stock home) are added
+  # automatically; a vendor package is a surprise worth a human look.
+  while read -r b; do
+    [[ -n "$b" ]] || continue
+    if [[ "$b" == com.google.* || "${HOME_BLOCKERS_OK:-}" == 1 ]]; then PKGS+=("$b")
+    else die "Refusing: vendor package $b out-ranks our launcher for HOME. Check what it is; re-run with HOME_BLOCKERS_OK=1 to include it."
+    fi
+  done <<<"$(home_blockers)"
+fi
+mapfile -t PKGS < <(printf '%s\n' "${PKGS[@]}" | awk 'NF && !seen[$0]++')
+
+todo=()
+for p in "${PKGS[@]}"; do
+  is_protected "$p" && die "Refusing: $p is protected (see PROTECT in profiles/). Take it out of the batch."
+  if ! installed "$p"; then echo "  absent    $p"
+  elif ! enabled "$p"; then echo "  disabled  $p"
+  else echo "  DISABLE   $p"; todo+=("$p")
+  fi
+done
+[[ ${#todo[@]} -gt 0 ]] || { echo "Nothing to do for '$BATCH'."; exit 0; }
+require_apply
+
+# ---- gates ----
+if [[ "$BATCH" == handover ]]; then
+  if [[ "$SDK" -ge 29 ]]; then
+    [[ "$(home_role)" == "$PKG" ]] || die "Refusing: our launcher doesn't hold the HOME role. Run APPLY=1 scripts/activate-home.sh first."
+  else
+    [[ -f "$STATE/home-activated" ]] || die "Refusing: run APPLY=1 scripts/activate-home.sh first."
+  fi
+else
+  [[ "$(home_resolved)" == "$OURS" ]] || die "Refusing: Home is $(home_resolved), not our launcher. Run the handover batch first."
 fi
 if [[ "$BATCH" == ambient ]]; then
-  [[ "$(a shell settings get secure screensaver_components | tr -d '\r')" == "$PKG/.ClockDreamService" ]] || { echo 'Refusing: screensaver is not pointed at our ClockDreamService yet.' >&2; exit 1; }
+  [[ "$(screensaver)" == "$OUR_DREAM" ]] || die "Refusing: the screensaver isn't our clock yet. Run APPLY=1 scripts/activate-home.sh."
 fi
+wifi_gate "${todo[@]}"
 
-mkdir -p "$(dirname "$LEDGER")"
-for p in "${PKGS[@]}"; do
-  if ! a shell pm path "$p" >/dev/null 2>&1; then echo "skip (not installed) $p"; continue; fi
+record_stock
+for p in "${todo[@]}"; do
   a shell pm disable-user --user 0 "$p"
   grep -qx "$p" "$LEDGER" 2>/dev/null || echo "$p" >> "$LEDGER"
-  sleep 15   # Hisense firmware can drop a disable that is followed too quickly by a reboot.
+  sleep "$SLEEP"
 done
 
-# Re-assert our HOME (package-state changes can clear the preferred activity) and return to it.
-a shell cmd package set-home-activity --user 0 "$PKG/.MainActivity" >/dev/null
+# Package changes can clear the preferred activity; re-assert it and go Home.
+a shell cmd package set-home-activity --user 0 "$OURS" >/dev/null
 a shell input keyevent KEYCODE_HOME
 sleep 2
-echo "Resolved HOME: $(home)"
-echo "Disabled now:"; a shell pm list packages -d | sed 's/^/  /'
+echo "Resolved HOME: $(home_resolved)"
+echo "Ledger: $LEDGER ($(wc -l < "$LEDGER") packages). Run scripts/health-check.sh next."

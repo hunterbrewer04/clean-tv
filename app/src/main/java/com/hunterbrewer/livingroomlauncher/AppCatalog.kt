@@ -44,7 +44,7 @@ class AppCatalog(private val context: Context) {
         val byPackage = linkedMapOf<String, AppEntry>()
         for (info in resolved) {
             val pkg = info.activityInfo.packageName
-            if (pkg == context.packageName || pkg == "com.google.android.apps.tv.launcherx") continue
+            if (pkg == context.packageName || pkg in stockLaunchers) continue
             val launch = pm.getLeanbackLaunchIntentForPackage(pkg)
                 ?: pm.getLaunchIntentForPackage(pkg)
                 ?: Intent(query).setClassName(pkg, info.activityInfo.name)
@@ -86,6 +86,14 @@ class AppCatalog(private val context: Context) {
     }
 
     companion object {
+        /** Stock home screens that also register a Leanback tile; launching one from here is just confusing. */
+        private val stockLaunchers = setOf(
+            "com.google.android.apps.tv.launcherx",   // Google TV
+            "com.google.android.tvlauncher",          // Android TV 9+
+            "com.google.android.leanbacklauncher"     // older Android TV
+        )
+
+        /** Default first-run order for common streaming apps. Anything else is appended; users can rearrange. */
         private val preferred = listOf(
             "org.jellyfin.androidtv",
             "com.netflix.ninja",
@@ -98,13 +106,9 @@ class AppCatalog(private val context: Context) {
             "com.peacocktv.peacockandroid",
             "com.google.android.youtube.tv",
             "com.cbs.ott",
-            "com.espn.score_center",
-            "com.foxsports.android",
-            "com.ncaa.mmlive.app",
             "com.apple.atve.androidtv.appletv",
             "com.plexapp.android",
             "com.spotify.tv.android",
-            "com.tailscale.ipn",
             "com.android.vending"
         )
     }

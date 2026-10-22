@@ -15,6 +15,7 @@ import android.widget.Toast
 
 class MainActivity : Activity(), LauncherView.Actions {
     private lateinit var catalog: AppCatalog
+    private lateinit var tvInputs: TvInputSource
     private lateinit var launcherView: LauncherView
 
     private val packageReceiver = object : BroadcastReceiver() {
@@ -36,6 +37,7 @@ class MainActivity : Activity(), LauncherView.Actions {
             )
 
         catalog = AppCatalog(this)
+        tvInputs = TvInputSource(this)
         launcherView = LauncherView(this, this)
         setContentView(launcherView)
         refreshApps()
@@ -91,14 +93,16 @@ class MainActivity : Activity(), LauncherView.Actions {
 
     override fun openSettings() = startSafely(Intent(Settings.ACTION_SETTINGS), "TV settings")
 
-    override fun switchInput(input: LauncherView.TvInput) {
-        val uri = Uri.parse(TvInputs.passthroughUri(input.id))
-        val intent = Intent(Intent.ACTION_VIEW, uri).apply {
-            setPackage("com.mediatek.wwtv.tvcenter")
-            setDataAndType(uri, "vnd.android.cursor.item/channel")
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        startSafely(intent, input.label)
+    override fun loadInputs(): List<InputSource> = tvInputs.load()
+
+    override fun noInputs() {
+        Toast.makeText(this, "This device doesn't report any TV inputs", Toast.LENGTH_SHORT).show()
+    }
+
+    override fun switchInput(input: InputSource) {
+        val intent = tvInputs.intentFor(input)
+        if (intent == null) Toast.makeText(this, "${input.label} is not available", Toast.LENGTH_SHORT).show()
+        else startSafely(intent, input.label)
     }
 
     private fun startSafely(intent: Intent, label: String) {

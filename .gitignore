@@ -5,12 +5,19 @@ local.properties
 .DS_Store
 build/
 */build/
+
+# Signing material never goes in the repo
 *.jks
 *.keystore
 signing.properties
 secrets.properties
+
+# Build output
 *.apk
 dist/
-# Captured device state is local operational data
+
+# Per-TV operational data: package lists, serials, ledgers, saved stock settings
 snapshots/
 state/
+devices.conf
+profiles/local.sh

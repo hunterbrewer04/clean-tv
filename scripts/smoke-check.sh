@@ -1,16 +1,14 @@
 #!/usr/bin/env bash
-# Post-install smoke check: version, foreground activity, crashes, memory, current Home.
-set -uo pipefail
-ADB="${ADB:-$HOME/.local/bin/adb}"
-TV="${TV:-192.168.1.92:5555}"
-PKG=com.hunterbrewer.livingroomlauncher
-a() { "$ADB" -s "$TV" "$@"; }
-printf 'Version: '; a shell dumpsys package "$PKG" | grep -m1 versionName | tr -d ' '
-printf 'Foreground: '; a shell dumpsys activity activities | grep -m1 mResumedActivity | sed 's/^ *//'
+# Read-only post-install check: version, foreground activity, crashes, memory, Home.
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+set +e
+printf 'Version:    '; sh_ dumpsys package "$PKG" | grep -m1 versionName | tr -d ' '
+printf 'Foreground: '; sh_ dumpsys activity activities | grep -m1 -E 'mResumedActivity|topResumedActivity' | sed 's/^ *//'
 echo '--- crashes'
 a logcat -d -b crash | grep -A8 "$PKG" | head -n 20
-a logcat -d | grep -E 'FATAL|AndroidRuntime' | grep -i -B1 -A6 "$PKG" | head -n 20
 echo '--- memory / start time'
-a shell dumpsys meminfo "$PKG" | grep -m1 'TOTAL PSS'
+sh_ dumpsys meminfo "$PKG" | grep -m1 'TOTAL PSS'
 a logcat -d | grep "Displayed $PKG" | tail -n 1
-printf 'Home: '; a shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -n 1
+echo "Home:        $(home_resolved)"
+by_us=0; [[ -f "$LEDGER" ]] && by_us="$(wc -l < "$LEDGER")"
+echo "Disabled:    $(sh_ pm list packages -d | wc -l) packages ($by_us by these scripts)"

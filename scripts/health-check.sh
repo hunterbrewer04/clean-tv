@@ -1,33 +1,32 @@
 #!/usr/bin/env bash
-# Read-only health check run after every debloat batch. Exit 1 if anything critical is missing.
-set -uo pipefail
-ADB="${ADB:-$HOME/.local/bin/adb}"
-TV="${TV:-192.168.1.92:5555}"
-PKG=com.hunterbrewer.livingroomlauncher
-a() { "$ADB" -s "$TV" "$@"; }
+# Read-only. Run after every batch. Exits 1 if anything critical is off.
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+set +e
 fail=0
 ok() { printf '  ok    %s\n' "$1"; }
 bad() { printf '  FAIL  %s\n' "$1"; fail=1; }
-"$ADB" connect "$TV" >/dev/null 2>&1
-a get-state >/dev/null 2>&1 && ok "adb reachable" || { bad "adb reachable"; exit 1; }
 
-home=$(a shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -n 1 | tr -d '\r')
-[[ "$home" == "$PKG/.MainActivity" ]] && ok "HOME = ours" || bad "HOME = $home"
+ok "adb reachable ($TV, $PROFILE profile)"
+home="$(home_resolved)"
+[[ "$home" == "$OURS" ]] && ok "HOME = ours" || bad "HOME = $home"
 
-a shell dumpsys wifi | grep -q 'mNetworkInfo.*CONNECTED\|curState=L2ConnectedState\|curState=ConnectedState' && ok "Wi-Fi connected" \
-  || { a shell ip -4 addr show wlan0 | grep -q 'inet ' && ok "Wi-Fi has IP" || bad "Wi-Fi"; }
+if sh_ dumpsys wifi | grep -E 'mNetworkInfo.*CONNECTED|curState=(L2Connected|Connected)State' >/dev/null; then ok "Wi-Fi connected"
+elif sh_ ip -4 addr show wlan0 | grep 'inet ' >/dev/null; then ok "Wi-Fi has an IP"
+elif sh_ ip -4 addr show eth0 2>/dev/null | grep 'inet ' >/dev/null; then ok "Ethernet has an IP"
+else bad "no network"; fi
 
-procs=$(a shell ps -A -o NAME | tr -d '\r')
-for p in com.google.android.apps.mediashell com.google.android.tv.remote.service com.mediatek.AirplayAPK com.mediatek.tv.service; do
-  if grep -q "^$p" <<<"$procs"; then ok "running $p"; else
-    # Some services start on demand; at least confirm the package is enabled.
-    if a shell pm list packages -e "$p" | tr -d '\r' | grep -qx "package:$p"; then ok "enabled (idle) $p"; else bad "missing/disabled $p"; fi
-  fi
+# Nothing protected may be disabled (exact names and whole protected namespaces).
+prot=0
+while read -r p; do
+  [[ -n "$p" ]] && is_protected "$p" && { bad "protected package disabled: $p"; prot=1; }
+done <<<"$(sh_ pm list packages -d | sed 's/^package://')"
+[[ $prot == 0 ]] && ok "no protected package is disabled"
+
+for p in com.google.android.apps.mediashell com.google.android.tv.remote.service com.android.vending com.google.android.gms; do
+  if ! installed "$p"; then echo "  -     $p (not on this device)"
+  elif enabled "$p"; then ok "enabled $p"
+  else bad "disabled $p"; fi
 done
-for p in com.android.vending com.google.android.gms com.android.tv.settings com.hisense.tv.hitvinput com.mediatek.wwtv.tvcenter com.vt.tv.input com.mediatek.autopair com.hisense.tv.smartsense com.vt.tv.aiot com.google.android.tungsten.setupwraith; do
-  if [[ "$p" == com.google.android.tungsten.setupwraith ]]; then continue; fi
-  a shell pm list packages -e "$p" | tr -d '\r' | grep -qx "package:$p" && ok "enabled $p" || bad "disabled $p"
-done
-printf '  screensaver = '; a shell settings get secure screensaver_components
+printf '  screensaver = %s\n' "$(screensaver)"
 a logcat -d -b crash 2>/dev/null | grep -E 'FATAL EXCEPTION|Process: ' | tail -n 6 | sed 's/^/  crash: /'
 exit $fail

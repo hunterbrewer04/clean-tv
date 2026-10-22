@@ -6,10 +6,11 @@
     <queries>
         <intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LEANBACK_LAUNCHER"/></intent>
         <package android:name="com.android.vending" />
-        <package android:name="org.jellyfin.androidtv" />
-        <package android:name="com.android.tv.settings" />
-        <package android:name="com.vt.tv.input" />
-        <package android:name="com.mediatek.wwtv.tvcenter" />
+        <!-- Input switching: find the firmware's Live TV app and native source picker, whatever the brand. -->
+        <intent><action android:name="android.intent.action.VIEW"/><data android:scheme="content" android:mimeType="vnd.android.cursor.item/channel"/></intent>
+        <intent><action android:name="com.android.tv.action.VIEW_INPUTS"/></intent>
+        <!-- Lets TvInputInfo.loadLabel read each input service's own label ("HDMI 1", user renames, ...). -->
+        <intent><action android:name="android.media.tv.TvInputService"/></intent>
     </queries>
     <application android:allowBackup="false" android:theme="@style/AppTheme" android:label="Living Room" android:banner="@drawable/banner" android:icon="@drawable/app_icon">
         <activity android:name=".MainActivity" android:screenOrientation="landscape" android:launchMode="singleTask" android:exported="true" tools:ignore="DiscouragedApi">

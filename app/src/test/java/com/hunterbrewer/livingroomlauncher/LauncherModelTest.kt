@@ -82,6 +82,59 @@ class LauncherModelTest {
         assertEquals(listOf(MenuOption.MOVE), AppMenu.options(removable = false))
     }
 
+    private fun raw(id: String, type: Int, label: String? = null, parent: String? = null, hidden: Boolean = false, system: Boolean = true, passthrough: Boolean = type != TvInputs.TYPE_TUNER) =
+        TvInputs.Raw(id, label, type, parent, hidden, system, passthrough)
+
+    @Test fun inputsKeepHardwareOrderAndDropAppAndAirplayInputs() {
+        // Shape of what a Hisense/MediaTek panel actually reports (order scrambled like dumpsys shows it).
+        val reported = listOf(
+            raw("v/.tuner.Tuner/HW0", TvInputs.TYPE_TUNER, "Antenna"),
+            raw("v/.hdmi.Hdmi/HW7", TvInputs.TYPE_HDMI, "HDMI 4"),
+            raw("com.fubo/.FuboTvInputService", TvInputs.TYPE_TUNER, "fubo", system = false),
+            raw("v/.hdmi.Hdmi/HW5", TvInputs.TYPE_HDMI, "HDMI 2"),
+            raw("airplay/.AirPlayTvInputService", TvInputs.TYPE_OTHER, "AirPlay"),
+            raw("v/.hdmi.Hdmi/HW4", TvInputs.TYPE_HDMI, "HDMI 1"),
+            raw("v/.tuner.Tuner/HW8", TvInputs.TYPE_TUNER, "Cable"),
+            raw("v/.composite.Composite/HW1", TvInputs.TYPE_COMPOSITE, "AV"),
+            raw("v/.hdmi.Hdmi/HW6", TvInputs.TYPE_HDMI, "HDMI 3")
+        )
+        val menu = TvInputs.select(reported)
+        assertEquals(listOf("HDMI 1", "HDMI 2", "HDMI 3", "HDMI 4", "AV", "Antenna"), menu.map { it.label })
+        assertEquals("v/.tuner.Tuner/HW0", menu.last().id)
+        assertTrue(menu.last().isTuner)
+    }
+
+    @Test fun duplicateGenericLabelsGetNumbered() {
+        val menu = TvInputs.select(listOf(
+            raw("t/.Hdmi/HW2", TvInputs.TYPE_HDMI, "HDMI"),
+            raw("t/.Hdmi/HW10", TvInputs.TYPE_HDMI, "HDMI"),
+            raw("t/.Hdmi/HW3", TvInputs.TYPE_HDMI, null)
+        ))
+        assertEquals(listOf("HDMI 1", "HDMI 2", "HDMI 3"), menu.map { it.label })
+        assertEquals(listOf("t/.Hdmi/HW2", "t/.Hdmi/HW3", "t/.Hdmi/HW10"), menu.map { it.id })
+    }
+
+    @Test fun renamedPortShowsKindAsDetail() {
+        val menu = TvInputs.select(listOf(raw("t/.Hdmi/HW1", TvInputs.TYPE_HDMI, "PlayStation 5"), raw("t/.Hdmi/HW2", TvInputs.TYPE_HDMI, "HDMI 2")))
+        assertEquals("HDMI", menu[0].detail)
+        assertEquals("", menu[1].detail)
+    }
+
+    @Test fun hiddenCecChildAndNonPassthroughThirdPartyInputsAreSkipped() {
+        val menu = TvInputs.select(listOf(
+            raw("t/.Hdmi/HW1", TvInputs.TYPE_HDMI, "HDMI 1"),
+            raw("t/.Hdmi/HW1/CEC4", TvInputs.TYPE_HDMI, "Roku", parent = "t/.Hdmi/HW1"),
+            raw("t/.Hdmi/HW2", TvInputs.TYPE_HDMI, "HDMI 2", hidden = true),
+            raw("app/.FakeHdmi", TvInputs.TYPE_HDMI, "Sketchy", system = false, passthrough = false)
+        ))
+        assertEquals(listOf("HDMI 1"), menu.map { it.label })
+    }
+
+    @Test fun streamingBoxWithNoInputsGivesEmptyMenu() {
+        assertTrue(TvInputs.select(emptyList()).isEmpty())
+        assertTrue(TvInputs.select(listOf(raw("app/.Svc", TvInputs.TYPE_OTHER, "App"))).isEmpty())
+    }
+
     @Test fun hdmiUriEscapesTvInputId() {
         assertEquals(
             "content://android.media.tv/passthrough/com.hisense.tv.hitvinput%2F.hdmi.HdmiTvInputService%2FHW4",

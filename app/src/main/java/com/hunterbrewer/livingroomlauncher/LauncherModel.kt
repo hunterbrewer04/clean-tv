@@ -99,7 +99,88 @@ object AppMenu {
         if (removable) listOf(MenuOption.MOVE, MenuOption.UNINSTALL) else listOf(MenuOption.MOVE)
 }
 
+/** A physical source the Inputs menu can switch to. */
+data class InputSource(val id: String, val label: String, val detail: String, val isTuner: Boolean)
+
+/**
+ * Turns whatever the TV's TvInputManager reports into the Inputs menu, so no brand needs hardcoded IDs.
+ * Pure (no android.media.tv types) so the selection rules run in JVM unit tests.
+ */
 object TvInputs {
+    // Mirrors android.media.tv.TvInputInfo.TYPE_* (stable public API values).
+    const val TYPE_TUNER = 0
+    const val TYPE_OTHER = 1000
+    const val TYPE_COMPOSITE = 1001
+    const val TYPE_SVIDEO = 1002
+    const val TYPE_SCART = 1003
+    const val TYPE_COMPONENT = 1004
+    const val TYPE_VGA = 1005
+    const val TYPE_DVI = 1006
+    const val TYPE_HDMI = 1007
+    const val TYPE_DISPLAY_PORT = 1008
+
+    /** Menu order: HDMI first (what people use), tuner last. TYPE_OTHER (AirPlay, app services) never shows. */
+    private val rank = listOf(TYPE_HDMI, TYPE_DISPLAY_PORT, TYPE_DVI, TYPE_VGA, TYPE_COMPONENT, TYPE_COMPOSITE, TYPE_SVIDEO, TYPE_SCART, TYPE_TUNER)
+
+    private fun kindName(type: Int) = when (type) {
+        TYPE_HDMI -> "HDMI"; TYPE_DISPLAY_PORT -> "DisplayPort"; TYPE_DVI -> "DVI"; TYPE_VGA -> "VGA"
+        TYPE_COMPONENT -> "Component"; TYPE_COMPOSITE -> "AV"; TYPE_SVIDEO -> "S-Video"; TYPE_SCART -> "SCART"
+        TYPE_TUNER -> "Live TV"; else -> "Input"
+    }
+
+    /** What the launcher needs to know about one TvInputInfo. */
+    data class Raw(
+        val id: String,
+        val label: String?,
+        val type: Int,
+        val parentId: String?,
+        val hidden: Boolean,
+        val systemApp: Boolean,
+        val passthrough: Boolean
+    )
+
+    /** Synthetic last entry that opens the TV's own source picker (works even when passthrough doesn't). */
+    const val PANEL_ID = "panel"
+
+    fun select(inputs: List<Raw>): List<InputSource> {
+        val physical = inputs.filter { raw ->
+            when {
+                raw.hidden -> false                    // user hid it in TV settings
+                raw.parentId != null -> false           // HDMI-CEC devices hang off their port; show the port once
+                raw.type == TYPE_TUNER -> raw.systemApp // apps like Fubo/Peacock register "tuner" inputs; skip them
+                raw.type in rank -> raw.passthrough || raw.systemApp
+                else -> false                           // TYPE_OTHER: AirPlay receivers, app services
+            }
+        }.sortedWith(compareBy<Raw>({ rank.indexOf(it.type) }, { naturalKey(it.id) })) // hardware (port) order
+        // Many TVs expose several tuner inputs (antenna, cable, ATSC 3.0). One Live TV entry is enough.
+        val firstTuner = physical.firstOrNull { it.type == TYPE_TUNER }
+        val kept = physical.filter { it.type != TYPE_TUNER || it === firstTuner }
+
+        // Firmware often labels every port just "HDMI"; number duplicates so the menu stays usable.
+        val baseLabels = kept.map { it.label?.trim().orEmpty().ifEmpty { kindName(it.type) } }
+        val counts = baseLabels.groupingBy { it }.eachCount()
+        val seen = HashMap<String, Int>()
+        return kept.mapIndexed { i, raw ->
+            val base = baseLabels[i]
+            val n = (seen[base] ?: 0) + 1
+            seen[base] = n
+            val label = if (counts.getValue(base) > 1) "$base $n" else base
+            InputSource(raw.id, label, detailFor(label, raw.type), raw.type == TYPE_TUNER)
+        }
+    }
+
+    /** Right-hand hint: the port kind when the label was renamed ("PS5" -> "HDMI"), otherwise nothing redundant. */
+    private fun detailFor(label: String, type: Int): String = when {
+        type == TYPE_TUNER -> "Antenna / Cable"
+        type == TYPE_COMPOSITE -> "Composite"
+        label.startsWith(kindName(type), ignoreCase = true) -> ""
+        else -> kindName(type)
+    }
+
+    /** "HW10" sorts after "HW9": digit runs compare numerically. */
+    private fun naturalKey(s: String): String =
+        Regex("\\d+").replace(s.lowercase()) { it.value.trimStart('0').padStart(10, '0') }
+
     fun passthroughUri(inputId: String): String =
         "content://android.media.tv/passthrough/" + URLEncoder.encode(inputId, "UTF-8").replace("+", "%20")
 }

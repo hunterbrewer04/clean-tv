@@ -21,11 +21,12 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
         fun saveOrder(entries: List<AppEntry>)
         fun openWifi()
         fun openSettings()
-        fun switchInput(input: TvInput)
+        fun switchInput(input: InputSource)
         fun uninstall(entry: AppEntry)
+        /** Re-read the TV's inputs right before the menu opens (HDMI labels/visibility can change in settings). */
+        fun loadInputs(): List<InputSource>
+        fun noInputs()
     }
-
-    data class TvInput(val label: String, val detail: String, val id: String)
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
@@ -66,14 +67,8 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
     private val amPm = SimpleDateFormat("a", Locale.US)
     private val date = SimpleDateFormat("EEEE   MMMM d", Locale.US)
 
-    private val inputs = listOf(
-        TvInput("HDMI 1", "HW4", "com.hisense.tv.hitvinput/.hdmi.HdmiTvInputService/HW4"),
-        TvInput("HDMI 2", "HW5", "com.hisense.tv.hitvinput/.hdmi.HdmiTvInputService/HW5"),
-        TvInput("HDMI 3", "HW6", "com.hisense.tv.hitvinput/.hdmi.HdmiTvInputService/HW6"),
-        TvInput("HDMI 4", "HW7", "com.hisense.tv.hitvinput/.hdmi.HdmiTvInputService/HW7"),
-        TvInput("AV", "Composite", "com.hisense.tv.hitvinput/.composite.CompositeTvInputService/HW1"),
-        TvInput("Live TV", "Antenna", "com.hisense.tv.hitvinput/.tuner.TunerTvInputService/HW0")
-    )
+    /** Discovered from TvInputManager when the menu opens; never hardcoded per brand. */
+    private var inputs: List<InputSource> = emptyList()
 
     init {
         isFocusable = true
@@ -263,15 +258,21 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
     }
 
     private fun drawInputMenu(c: Canvas) {
-        val x = 1310f; val y = 220f; val w = 520f; val h = 590f
+        // Height follows the input count; past MAX_INPUT_ROWS the list scrolls with focus.
+        val rows = minOf(inputs.size, MAX_INPUT_ROWS)
+        val first = (nav.index - rows + 1).coerceAtLeast(0)
+        val x = 1310f; val y = 220f; val w = 520f; val h = 90f + rows * 82f
         paint.color = Color.argb(225, 25, 28, 35); rect.set(x, y, x + w, y + h); c.drawRoundRect(rect, 34f, 34f, paint)
         label(c, "INPUTS", x + 26f, y + 50f, 22f, Color.argb(150, 255, 255, 255), medium, 4f)
-        inputs.forEachIndexed { i, input ->
-            val iy = y + 70f + i * 82f
+        for (row in 0 until rows) {
+            val i = first + row
+            val input = inputs[i]
+            val iy = y + 70f + row * 82f
             val focused = nav.index == i
             if (focused) { paint.color = Color.WHITE; rect.set(x + 15f, iy, x + w - 15f, iy + 72f); c.drawRoundRect(rect, 20f, 20f, paint) }
             val fg = if (focused) Color.rgb(18, 21, 27) else Color.WHITE
-            drawHeaderIcon(c, if (i < 5) 0 else 1, x + 38f, iy + 18f, fg)
+            val icon = when { input.id == TvInputs.PANEL_ID -> 2; input.isTuner -> 1; else -> 0 }
+            drawHeaderIcon(c, icon, x + 38f, iy + 18f, fg)
             label(c, input.label, x + 97f, iy + 46f, 29f, fg, medium)
             label(c, input.detail, x + w - 35f, iy + 44f, 21f, if (focused) Color.rgb(95, 98, 105) else Color.argb(125, 255, 255, 255), regular, align = Paint.Align.RIGHT)
         }
@@ -398,7 +399,10 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
         when (nav.zone) {
             Zone.GRID -> apps.getOrNull(nav.index)?.let(actions::launch)
             Zone.HEADER -> when (nav.index) {
-                0 -> nav = NavigationState.inputs(0, inputs.size)
+                0 -> {
+                    inputs = actions.loadInputs()
+                    if (inputs.isEmpty()) actions.noInputs() else nav = NavigationState.inputs(0, inputs.size)
+                }
                 1 -> actions.openWifi()
                 else -> actions.openSettings()
             }
@@ -425,6 +429,7 @@ class LauncherView(context: Context, private val actions: Actions) : View(contex
         private const val FOCUS_MS = 170L
         private const val GRID_TOP = 300f
         private const val VISIBLE_ROWS = 3
+        private const val MAX_INPUT_ROWS = 9
         private const val GREET_X = 112f
         private const val GREET_SIZE = 32f
         private const val GREET_TRACKING = 4f

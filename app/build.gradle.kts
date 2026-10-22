@@ -3,7 +3,7 @@ import java.util.Properties
 plugins { id("com.android.application"); kotlin("android") }
 
 val signingProperties = Properties()
-val signingPropertiesPath = System.getenv("LIVING_ROOM_SIGNING_PROPERTIES")
+val signingPropertiesPath = System.getenv("SIGNING_PROPERTIES") ?: System.getenv("LIVING_ROOM_SIGNING_PROPERTIES")
 val signingPropertiesFile = signingPropertiesPath?.let(::file)
 if (signingPropertiesFile?.isFile == true) signingPropertiesFile.inputStream().use(signingProperties::load)
 
@@ -14,8 +14,8 @@ android {
         applicationId = "com.hunterbrewer.livingroomlauncher"
         minSdk = 23
         targetSdk = 34
-        versionCode = 5
-        versionName = "0.4.1"
+        versionCode = 6
+        versionName = "0.5.0"
         testInstrumentationRunner = "android.test.InstrumentationTestRunner"
     }
     buildFeatures { buildConfig = true }
