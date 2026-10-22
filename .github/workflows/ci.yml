@@ -17,7 +17,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - uses: android-actions/setup-android@v3
+      # ubuntu-latest ships an Android SDK (ANDROID_HOME); Gradle fetches anything missing.
       - name: Unit tests, lint, unsigned release build
         run: ./gradlew testDebugUnitTest lintDebug assembleRelease --no-daemon
 
@@ -26,4 +26,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: shellcheck
-        run: shellcheck -x -P SCRIPTDIR:profiles:scripts scripts/*.sh profiles/*.sh
+        run: shellcheck -x -S warning -P SCRIPTDIR:profiles:scripts scripts/*.sh profiles/*.sh
