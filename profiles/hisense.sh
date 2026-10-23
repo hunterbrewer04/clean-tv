@@ -8,7 +8,6 @@ BATCH_ambient+=(com.hisense.alexa)
 BATCH_vidaa=(net.vidaatv.android.tv net.vidaatv.hisense.android.tv)
 BATCH_preloads+=(
   com.haystack.android                      # Haystack News
-  ar.tvplayer.tv                            # TVPlayer
 )
 
 PROTECT+=(
