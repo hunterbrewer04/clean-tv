@@ -17,12 +17,13 @@ export SIGNING_PROPERTIES="${SIGNING_PROPERTIES:-${LIVING_ROOM_SIGNING_PROPERTIE
 [[ -d "$ANDROID_HOME/platforms/android-34" ]] || { echo "Missing Android SDK platform 34 under ANDROID_HOME=$ANDROID_HOME" >&2; exit 1; }
 [[ -f "$SIGNING_PROPERTIES" ]] || { echo "Missing signing properties: $SIGNING_PROPERTIES (see the top of this script)" >&2; exit 1; }
 cd "$ROOT"
-VERSION="$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' app/build.gradle.kts)"
-printf 'sdk.dir=%s\n' "$ANDROID_HOME" > local.properties
-./gradlew clean testDebugUnitTest lintDebug assembleRelease --no-daemon
+VERSION="$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' launcher/app/build.gradle.kts)"
+[[ -n "$VERSION" ]] || { echo "Couldn't read versionName from launcher/app/build.gradle.kts" >&2; exit 1; }
+printf 'sdk.dir=%s\n' "$ANDROID_HOME" > launcher/local.properties
+(cd launcher && ./gradlew clean testDebugUnitTest lintDebug assembleRelease --no-daemon)
 OUT="dist/living-room-launcher-v$VERSION.apk"
 mkdir -p dist
-cp app/build/outputs/apk/release/app-release.apk "$OUT"
+cp launcher/app/build/outputs/apk/release/app-release.apk "$OUT"
 (cd dist && sha256sum "$(basename "$OUT")" > "$(basename "$OUT").sha256")
 BT="$(ls -d "$ANDROID_HOME"/build-tools/* 2>/dev/null | sort -V | tail -n 1)"
 if [[ -x "$BT/apksigner" ]]; then "$BT/apksigner" verify --print-certs "$OUT" | grep -E 'Signer #1 certificate (DN|SHA-256)'; fi
