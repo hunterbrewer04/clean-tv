@@ -155,7 +155,7 @@ Machine-specific tweaks (an extra batch, a different `DISABLE_SLEEP`) go in `pro
 ## Layout
 
 ```
-app/        launcher (Kotlin, one Activity, one Canvas View, a DreamService)
+launcher/   the Android app (Gradle project): Kotlin, one Activity, one Canvas View, a DreamService
 scripts/    lib.sh (shared) + survey, install, activate-home, debloat, health-check, restore, reapply, app-keys, smoke-check, build-release
 profiles/   google.sh (baseline), hisense.sh, tcl.sh
 state/      per-TV ledgers and surveys (gitignored)

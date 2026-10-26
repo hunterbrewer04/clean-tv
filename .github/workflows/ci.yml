@@ -19,6 +19,7 @@ jobs:
           java-version: "17"
       # ubuntu-latest ships an Android SDK (ANDROID_HOME); Gradle fetches anything missing.
       - name: Unit tests, lint, unsigned release build
+        working-directory: launcher
         run: ./gradlew testDebugUnitTest lintDebug assembleRelease --no-daemon
 
   scripts:
