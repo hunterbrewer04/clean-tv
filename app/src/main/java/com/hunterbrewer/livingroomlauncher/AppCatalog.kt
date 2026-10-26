@@ -95,19 +95,18 @@ class AppCatalog(private val context: Context) {
 
         /** Default first-run order for common streaming apps. Anything else is appended; users can rearrange. */
         private val preferred = listOf(
-            "org.jellyfin.androidtv",
             "com.netflix.ninja",
+            "com.google.android.youtube.tv",
             "com.disney.disneyplus",
             "com.amazon.amazonvideo.livingroom",
-            "com.tubitv",
-            "com.fubo.firetv.screen",
             "com.hulu.livingroomplus",
             "com.wbd.stream",
-            "com.peacocktv.peacockandroid",
-            "com.google.android.youtube.tv",
-            "com.cbs.ott",
             "com.apple.atve.androidtv.appletv",
+            "com.peacocktv.peacockandroid",
+            "com.cbs.ott",
+            "com.tubitv",
             "com.plexapp.android",
+            "org.jellyfin.androidtv",
             "com.spotify.tv.android",
             "com.android.vending"
         )

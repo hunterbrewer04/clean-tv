@@ -72,6 +72,23 @@ object TimeLabels {
     }
 }
 
+/**
+ * Burn-in protection for the clock screensaver: a slow, non-repeating-looking drift, one step per minute.
+ * [offset] returns fractions in [-1, 1]; the view scales them by [MAX_X] / [MAX_Y] of the screen size.
+ */
+object ClockDrift {
+    const val MAX_X = 0.06f
+    const val MAX_Y = 0.08f
+
+    fun offset(minute: Long): Pair<Float, Float> {
+        val a = (minute % 100_000L) * 0.37
+        return Pair(kotlin.math.sin(a).toFloat(), kotlin.math.sin(a * 1.618 + 1.0).toFloat())
+    }
+
+    /** Delay until just after the next wall-clock minute, so the time flips on the minute. */
+    fun msToNextMinute(nowMs: Long): Long = 60_000L - (nowMs % 60_000L) + 50L
+}
+
 /** Pure ARGB math (no android.graphics) so it runs in JVM unit tests. */
 object ColorMath {
     const val FALLBACK: Int = 0xFF282F3E.toInt()

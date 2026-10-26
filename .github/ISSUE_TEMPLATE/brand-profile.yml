@@ -1,0 +1,47 @@
+name: Brand profile report
+description: Share what worked (or didn't) on a TV brand, so a profile can be added or improved.
+labels: [profile]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks! Only report packages you actually disabled on a real TV and lived with for a while.
+        Run `scripts/survey.sh` first; its output answers most of the questions below.
+  - type: input
+    id: model
+    attributes:
+      label: TV brand and model
+      placeholder: "TCL 55S450G"
+    validations:
+      required: true
+  - type: input
+    id: manufacturer
+    attributes:
+      label: ro.product.manufacturer
+      description: "`adb shell getprop ro.product.manufacturer`"
+    validations:
+      required: true
+  - type: input
+    id: android
+    attributes:
+      label: Android version and chipset
+      placeholder: "Android TV 11, Realtek"
+    validations:
+      required: true
+  - type: textarea
+    id: packages
+    attributes:
+      label: Packages you disabled
+      description: One per line, with what each one does if you know.
+      render: text
+  - type: textarea
+    id: checked
+    attributes:
+      label: What you checked afterward
+      description: Casting, AirPlay, remote buttons, inputs/Live TV, Play Store, Wi-Fi, a reboot...
+    validations:
+      required: true
+  - type: textarea
+    id: problems
+    attributes:
+      label: Anything that broke or needed protecting

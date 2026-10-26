@@ -1,14 +1,24 @@
 # Living Room Launcher
 
-A small, private home screen for Google TV and Android TV, plus reversible ADB scripts to switch the stock home screen off and clear out preinstalled bloat. It works on any brand. The home screen is just the launcher, and the scripts figure out the rest per device.
+A small, ad-free home screen for Google TV and Android TV, plus reversible ADB scripts to switch the stock home screen off and clear out preinstalled bloat. It works on any brand. The home screen is just the launcher, and the scripts figure out the rest per device.
 
-- **No ads, no tracking, no network.** The APK is about 110 KB, pure Kotlin with one custom `View`, and has no third-party runtime libraries. Its only permission is `REQUEST_DELETE_PACKAGES`, which opens the system "Uninstall?" dialog.
+![Living Room Launcher home screen on a TCL Google TV](docs/screenshots/home.png)
+
+| Hold OK on an app | Inputs menu | Clock screensaver |
+|---|---|---|
+| ![App menu with Move and Uninstall](docs/screenshots/app-menu.png) | ![Inputs menu listing HDMI 1-3, AV, Live TV and All sources](docs/screenshots/inputs.png) | ![Clock screensaver](docs/screenshots/screensaver.png) |
+
+<sub>Real screenshots from a TCL Google TV, taken over ADB.</sub>
+
+**[Download the latest APK](https://github.com/hunterbrewer04/living-room-launcher/releases/latest)**
+
+- **No ads, no tracking, no network.** The APK is about 115 KB, pure Kotlin with one custom `View`, and has no third-party runtime libraries. Its only permission is `REQUEST_DELETE_PACKAGES`, which opens the system "Uninstall?" dialog.
 - **Clock, greeting and date header**, with a five-column app grid built from your installed TV apps. Banner art is used when an app has it. Otherwise you get the icon on a color sampled from it.
 - **Hold OK on an app** to move it, or to uninstall it if you installed it yourself. The order you set persists.
 - **Inputs menu** built from whatever HDMI/AV/tuner sources the TV reports. Nothing in it is hardcoded per model, and the TV's own source picker is the last entry.
 - **Wi-Fi and Settings shortcuts**, and Play Store shown as **Get Apps**. New installs appear right away.
-- **Built-in clock screensaver**, so the Google ambient mode can go.
-- About 60–70 MB of RAM in use, vs about 150 MB for the stock Google TV home on the same set.
+- **Built-in clock screensaver**, so the Google ambient mode can go. It drifts a little every minute so it can't burn into OLED panels.
+- About 55–75 MB of RAM in use, vs about 150 MB for the stock Google TV home on the same set.
 
 It does not touch app data. Netflix, Disney+, and everything else stays signed in. Chromecast, AirPlay, Bluetooth remotes, the Google TV / Home Assistant remote, TV inputs and the Play Store all keep working, and the scripts refuse to disable the packages behind them.
 
@@ -20,7 +30,7 @@ It does not touch app data. Netflix, Disney+, and everything else stays signed i
 | | |
 |---|---|
 | OS | Android TV / Google TV, Android 6.0+ (API 23). Home handover tested on Android 11 |
-| Tested | Hisense Google TV (Android TV 11, MediaTek) |
+| Tested | Hisense Google TV (Android TV 11, MediaTek), TCL Google TV (Android TV 11, Realtek) |
 | Profiles | `google` (any brand, the baseline), `hisense`, `tcl` |
 | Streaming sticks | Launcher works. The Inputs menu just has fewer entries (or none) |
 
@@ -54,12 +64,21 @@ This prints the model, the HOME candidates and their priority, the TV inputs, wh
 
 ## 3. Build and install the launcher
 
-Grab a release APK, or build one (JDK 17 plus an Android SDK with platform 34; see the top of `scripts/build-release.sh` for the signing setup):
+Download the signed APK (and its `.sha256`) from [Releases](https://github.com/hunterbrewer04/living-room-launcher/releases/latest) and install it:
+
+```bash
+TV=bedroom APPLY=1 APK=~/Downloads/living-room-launcher-v0.5.3.apk scripts/install.sh
+```
+
+If the `.sha256` file sits next to the APK, `install.sh` checks it first. Or build your own (JDK 17 plus an Android SDK with platform 34; see the top of `scripts/build-release.sh` for the signing setup), which installs the newest APK in `dist/`:
 
 ```bash
 scripts/build-release.sh
 TV=bedroom APPLY=1 scripts/install.sh
 ```
+
+> [!NOTE]
+> Android only accepts updates signed with the same key. If you switch between the release APK and your own build, uninstall first. That resets your saved tile order, but nothing else.
 
 This installs **alongside** the stock home screen. Nothing is disabled and Home isn't changed yet.
 
@@ -137,9 +156,10 @@ Machine-specific tweaks (an extra batch, a different `DISABLE_SLEEP`) go in `pro
 
 ```
 app/        launcher (Kotlin, one Activity, one Canvas View, a DreamService)
-scripts/    lib.sh (shared) + survey, install, activate-home, debloat, health-check, restore, reapply, smoke-check, build-release
+scripts/    lib.sh (shared) + survey, install, activate-home, debloat, health-check, restore, reapply, app-keys, smoke-check, build-release
 profiles/   google.sh (baseline), hisense.sh, tcl.sh
 state/      per-TV ledgers and surveys (gitignored)
+docs/       screenshots
 ```
 
 ## Limits

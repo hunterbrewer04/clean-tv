@@ -13,7 +13,8 @@
         <intent><action android:name="android.media.tv.TvInputService"/></intent>
     </queries>
     <application android:allowBackup="false" android:theme="@style/AppTheme" android:label="Living Room" android:banner="@drawable/banner" android:icon="@drawable/app_icon">
-        <activity android:name=".MainActivity" android:screenOrientation="landscape" android:launchMode="singleTask" android:exported="true" tools:ignore="DiscouragedApi">
+        <!-- configChanges: a keyboard or game controller connecting must not restart Home (it reset focus and closed menus). -->
+        <activity android:name=".MainActivity" android:screenOrientation="landscape" android:launchMode="singleTask" android:exported="true" android:configChanges="keyboard|keyboardHidden|navigation" tools:ignore="DiscouragedApi">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.HOME" />

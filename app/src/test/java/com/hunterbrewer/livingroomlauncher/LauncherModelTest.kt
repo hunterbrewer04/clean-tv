@@ -5,6 +5,20 @@ import org.junit.Test
 import java.time.LocalDateTime
 
 class LauncherModelTest {
+    @Test fun clockDriftStaysInBoundsAndMovesEveryMinute() {
+        val start = 29_000_000L // roughly 2025 in epoch minutes
+        for (m in start until start + 2_000) {
+            val (x, y) = ClockDrift.offset(m)
+            assertTrue(x in -1f..1f && y in -1f..1f)
+            assertNotEquals(ClockDrift.offset(m), ClockDrift.offset(m + 1))
+        }
+    }
+
+    @Test fun clockTickLandsJustAfterTheNextMinute() {
+        assertEquals(60_050L, ClockDrift.msToNextMinute(120_000L))
+        assertEquals(50L + 1_000L, ClockDrift.msToNextMinute(179_000L))
+    }
+
     @Test fun upFromFirstGridRowEntersHeader() {
         val state = NavigationState.grid(index = 3, columns = 5, itemCount = 12)
         assertEquals(NavigationState.header(2, 5, 12), state.move(Direction.UP))

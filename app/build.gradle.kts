@@ -14,9 +14,8 @@ android {
         applicationId = "com.hunterbrewer.livingroomlauncher"
         minSdk = 23
         targetSdk = 34
-        versionCode = 8
-        versionName = "0.5.2"
-        testInstrumentationRunner = "android.test.InstrumentationTestRunner"
+        versionCode = 9
+        versionName = "0.5.3"
     }
     buildFeatures { buildConfig = true }
     signingConfigs {

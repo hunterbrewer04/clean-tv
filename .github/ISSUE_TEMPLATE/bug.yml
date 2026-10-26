@@ -1,0 +1,30 @@
+name: Bug report
+description: Something in the launcher or the scripts doesn't work.
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Launcher version
+      description: "`TV=... scripts/smoke-check.sh` prints it."
+      placeholder: "0.5.3"
+    validations:
+      required: true
+  - type: input
+    id: tv
+    attributes:
+      label: TV brand, model and Android version
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what you expected
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Script output or logcat
+      description: "For crashes: `adb logcat -d -b crash`. Remove anything personal (IPs, Wi-Fi names) first."
+      render: text
