@@ -1,5 +1,10 @@
 # Living Room Launcher
 
+[![CI](https://github.com/hunterbrewer04/living-room-launcher/actions/workflows/ci.yml/badge.svg)](https://github.com/hunterbrewer04/living-room-launcher/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/hunterbrewer04/living-room-launcher)](https://github.com/hunterbrewer04/living-room-launcher/releases/latest)
+[![Android TV 6.0+](https://img.shields.io/badge/Android%20TV-6.0%2B-3DDC84?logo=android&logoColor=white)](#compatibility)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 A small, ad-free home screen for Google TV and Android TV, plus reversible ADB scripts to switch the stock home screen off and clear out preinstalled bloat. It works on any brand. The home screen is just the launcher, and the scripts figure out the rest per device.
 
 ![Living Room Launcher home screen on a TCL Google TV](docs/screenshots/home.png)
@@ -10,7 +15,7 @@ A small, ad-free home screen for Google TV and Android TV, plus reversible ADB s
 
 <sub>Real screenshots from a TCL Google TV, taken over ADB.</sub>
 
-**[Download the latest APK](https://github.com/hunterbrewer04/living-room-launcher/releases/latest)**
+**[Download the latest APK](https://github.com/hunterbrewer04/living-room-launcher/releases/latest)** · [What's new](CHANGELOG.md)
 
 - **No ads, no tracking, no network.** The APK is about 115 KB, pure Kotlin with one custom `View`, and has no third-party runtime libraries. Its only permission is `REQUEST_DELETE_PACKAGES`, which opens the system "Uninstall?" dialog.
 - **Clock, greeting and date header**, with a five-column app grid built from your installed TV apps. Banner art is used when an app has it. Otherwise you get the icon on a color sampled from it.
