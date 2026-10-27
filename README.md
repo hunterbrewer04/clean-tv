@@ -1,21 +1,21 @@
-# Living Room Launcher
+# Clean TV
 
-[![CI](https://github.com/hunterbrewer04/living-room-launcher/actions/workflows/ci.yml/badge.svg)](https://github.com/hunterbrewer04/living-room-launcher/actions/workflows/ci.yml)
-[![Latest release](https://img.shields.io/github/v/release/hunterbrewer04/living-room-launcher)](https://github.com/hunterbrewer04/living-room-launcher/releases/latest)
+[![CI](https://github.com/hunterbrewer04/clean-tv/actions/workflows/ci.yml/badge.svg)](https://github.com/hunterbrewer04/clean-tv/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/hunterbrewer04/clean-tv)](https://github.com/hunterbrewer04/clean-tv/releases/latest)
 [![Android TV 6.0+](https://img.shields.io/badge/Android%20TV-6.0%2B-3DDC84?logo=android&logoColor=white)](#compatibility)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 A small, ad-free home screen for Google TV and Android TV, plus reversible ADB scripts to switch the stock home screen off and clear out preinstalled bloat. It works on any brand. The home screen is just the launcher, and the scripts figure out the rest per device.
 
-![Living Room Launcher home screen on a TCL Google TV](docs/screenshots/home.png)
+![Clean TV home screen on a TCL Google TV](docs/screenshots/home.png)
 
 | Hold OK on an app | Inputs menu | Clock screensaver |
 |---|---|---|
 | ![App menu with Move and Uninstall](docs/screenshots/app-menu.png) | ![Inputs menu listing HDMI 1-3, AV, Live TV and All sources](docs/screenshots/inputs.png) | ![Clock screensaver](docs/screenshots/screensaver.png) |
 
-<sub>Real screenshots from a TCL Google TV, taken over ADB.</sub>
+<sub>Real screenshots from a TCL Google TV, taken over ADB. The screensaver shot is re-centered; on the TV it drifts slowly to protect the panel.</sub>
 
-**[Download the latest APK](https://github.com/hunterbrewer04/living-room-launcher/releases/latest)** · [What's new](CHANGELOG.md)
+**[Download the latest APK](https://github.com/hunterbrewer04/clean-tv/releases/latest)** · [What's new](CHANGELOG.md)
 
 - **No ads, no tracking, no network.** The APK is about 115 KB, pure Kotlin with one custom `View`, and has no third-party runtime libraries. Its only permission is `REQUEST_DELETE_PACKAGES`, which opens the system "Uninstall?" dialog.
 - **Clock, greeting and date header**, with a five-column app grid built from your installed TV apps. Banner art is used when an app has it. Otherwise you get the icon on a color sampled from it.
@@ -69,10 +69,10 @@ This prints the model, the HOME candidates and their priority, the TV inputs, wh
 
 ## 3. Build and install the launcher
 
-Download the signed APK (and its `.sha256`) from [Releases](https://github.com/hunterbrewer04/living-room-launcher/releases/latest) and install it:
+Download the signed APK (and its `.sha256`) from [Releases](https://github.com/hunterbrewer04/clean-tv/releases/latest) and install it:
 
 ```bash
-TV=bedroom APPLY=1 APK=~/Downloads/living-room-launcher-v0.5.3.apk scripts/install.sh
+TV=bedroom APPLY=1 APK=~/Downloads/clean-tv-v0.5.4.apk scripts/install.sh
 ```
 
 If the `.sha256` file sits next to the APK, `install.sh` checks it first. Or build your own (JDK 17 plus an Android SDK with platform 34; see the top of `scripts/build-release.sh` for the signing setup), which installs the newest APK in `dist/`:

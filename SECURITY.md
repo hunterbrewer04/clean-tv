@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Please don't open a public issue. Use **[Report a vulnerability](https://github.com/hunterbrewer04/living-room-launcher/security/advisories/new)** (GitHub private reporting) instead. It goes only to the maintainer, and stays private until a fix is out.
+Please don't open a public issue. Use **[Report a vulnerability](https://github.com/hunterbrewer04/clean-tv/security/advisories/new)** (GitHub private reporting) instead. It goes only to the maintainer, and stays private until a fix is out.
 
 Useful to include: the launcher version, the TV model and Android version, and the steps to reproduce.
 
@@ -21,4 +21,4 @@ Each release lists the APK's SHA-256 next to it (`.sha256` file), and the signin
 49d92732245eee5d407e04e0446d66139370b827a3ab2ed7407b5665ff5b7c93
 ```
 
-Check the certificate with `apksigner verify --print-certs living-room-launcher-vX.Y.Z.apk`.
+Check the certificate with `apksigner verify --print-certs clean-tv-vX.Y.Z.apk`.
