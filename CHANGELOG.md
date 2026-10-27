@@ -2,6 +2,10 @@
 
 All notable changes to this project. Versions match the launcher's `versionName`; each one is a git tag, and signed APKs are on [Releases](https://github.com/hunterbrewer04/clean-tv/releases).
 
+## Unreleased
+
+- Docs: the README is now a short overview. The full walkthrough (prerequisites, ADB, survey, install, side-by-side checklist, Home handover, batches, undo, troubleshooting, adding a brand) moved to [docs/GUIDE.md](docs/GUIDE.md), and [docs/AI-PROMPT.md](docs/AI-PROMPT.md) has a copy-paste prompt for having an AI assistant walk you through setup.
+
 ## 0.5.4 (2026-10-27)
 
 - **Renamed to Clean TV** (it was "Living Room Launcher", after the first TV it ran on). The app now shows up as "Clean TV", release APKs are `clean-tv-vX.Y.Z.apk`, and the repo moved to `hunterbrewer04/clean-tv`; old links redirect. The package ID (`com.hunterbrewer.livingroomlauncher`) is unchanged, so this installs as a normal update and keeps your tile order.
