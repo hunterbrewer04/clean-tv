@@ -1,9 +1,11 @@
 # Changelog
 
-All notable changes to this project. Versions match the launcher's `versionName`; each one is a git tag, and signed APKs are on [Releases](https://github.com/hunterbrewer04/living-room-launcher/releases).
+All notable changes to this project. Versions match the launcher's `versionName`; each one is a git tag, and signed APKs are on [Releases](https://github.com/hunterbrewer04/clean-tv/releases).
 
-## Unreleased
+## 0.5.4 (2026-10-27)
 
+- **Renamed to Clean TV** (it was "Living Room Launcher", after the first TV it ran on). The app now shows up as "Clean TV", release APKs are `clean-tv-vX.Y.Z.apk`, and the repo moved to `hunterbrewer04/clean-tv`; old links redirect. The package ID (`com.hunterbrewer.livingroomlauncher`) is unchanged, so this installs as a normal update and keeps your tile order.
+- `build-release.sh` reads signing settings from `SIGNING_PROPERTIES` only (the old `LIVING_ROOM_SIGNING_PROPERTIES` fallback is gone).
 - The Android project moved into `launcher/`. The repo root now holds just the app, `scripts/` and `profiles/`. `scripts/build-release.sh` and CI build from the new location; the APK is unchanged.
 - Added `CHANGELOG.md`, `SECURITY.md`, Dependabot for GitHub Actions, and README badges.
 

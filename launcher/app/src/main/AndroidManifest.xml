@@ -12,7 +12,7 @@
         <!-- Lets TvInputInfo.loadLabel read each input service's own label ("HDMI 1", user renames, ...). -->
         <intent><action android:name="android.media.tv.TvInputService"/></intent>
     </queries>
-    <application android:allowBackup="false" android:theme="@style/AppTheme" android:label="Living Room" android:banner="@drawable/banner" android:icon="@drawable/app_icon">
+    <application android:allowBackup="false" android:theme="@style/AppTheme" android:label="Clean TV" android:banner="@drawable/banner" android:icon="@drawable/app_icon">
         <!-- configChanges: a keyboard or game controller connecting must not restart Home (it reset focus and closed menus). -->
         <activity android:name=".MainActivity" android:screenOrientation="landscape" android:launchMode="singleTask" android:exported="true" android:configChanges="keyboard|keyboardHidden|navigation" tools:ignore="DiscouragedApi">
             <intent-filter>

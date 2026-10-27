@@ -13,7 +13,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 [[ -n "${JAVA_HOME:-}" || ! -d "$HOME/Android/jdk17" ]] || export JAVA_HOME="$HOME/Android/jdk17"
 [[ -z "${JAVA_HOME:-}" ]] || export PATH="$JAVA_HOME/bin:$PATH"   # apksigner runs whatever `java` is on PATH
 export ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Android/sdk}}"
-export SIGNING_PROPERTIES="${SIGNING_PROPERTIES:-${LIVING_ROOM_SIGNING_PROPERTIES:-$HOME/Android/signing/living-room-launcher.properties}}"
+export SIGNING_PROPERTIES="${SIGNING_PROPERTIES:-$HOME/Android/signing/clean-tv.properties}"
 [[ -d "$ANDROID_HOME/platforms/android-34" ]] || { echo "Missing Android SDK platform 34 under ANDROID_HOME=$ANDROID_HOME" >&2; exit 1; }
 [[ -f "$SIGNING_PROPERTIES" ]] || { echo "Missing signing properties: $SIGNING_PROPERTIES (see the top of this script)" >&2; exit 1; }
 cd "$ROOT"
@@ -21,7 +21,7 @@ VERSION="$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' launcher/app/build.gradle.
 [[ -n "$VERSION" ]] || { echo "Couldn't read versionName from launcher/app/build.gradle.kts" >&2; exit 1; }
 printf 'sdk.dir=%s\n' "$ANDROID_HOME" > launcher/local.properties
 (cd launcher && ./gradlew clean testDebugUnitTest lintDebug assembleRelease --no-daemon)
-OUT="dist/living-room-launcher-v$VERSION.apk"
+OUT="dist/clean-tv-v$VERSION.apk"
 mkdir -p dist
 cp launcher/app/build/outputs/apk/release/app-release.apk "$OUT"
 (cd dist && sha256sum "$(basename "$OUT")" > "$(basename "$OUT").sha256")
