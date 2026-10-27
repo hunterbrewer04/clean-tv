@@ -2,7 +2,7 @@
 # Make the launcher the preferred Home and its clock the screensaver. Disables nothing.
 #   TV=... scripts/activate-home.sh            (dry run)
 #   TV=... APPLY=1 scripts/activate-home.sh
-# Only run this after the launcher has passed the side-by-side checklist in the README.
+# Only run this after the launcher has passed the side-by-side checklist in docs/GUIDE.md.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 installed "$PKG" || die "Launcher is not installed. Run scripts/install.sh first."
 
